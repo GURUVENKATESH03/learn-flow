@@ -1,0 +1,6 @@
+{
+  "name": "LearnFlow",
+  "description": "AI-powered smart learning & project management mobile app with roadmaps, git tracking, note mind-mapping, and intelligent insights.",
+  "requestFramePermissions": ["microphone"],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}

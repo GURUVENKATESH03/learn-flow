@@ -1,0 +1,311 @@
+import React, { useState } from 'react';
+import { Roadmap, RoadmapMilestone } from '../../types';
+import {
+  Compass,
+  CheckCircle2,
+  Circle,
+  Clock,
+  Sparkles,
+  ArrowRight,
+  ChevronDown,
+  ChevronUp,
+  Award,
+} from 'lucide-react';
+import confetti from 'canvas-confetti';
+
+interface RoadmapScreenProps {
+  roadmap: Roadmap;
+  onUpdateRoadmap: (updated: Roadmap) => void;
+}
+
+export const RoadmapScreen: React.FC<RoadmapScreenProps> = ({ roadmap, onUpdateRoadmap }) => {
+  const [expandedMilestone, setExpandedMilestone] = useState<number | null>(1); // Spring Boot expanded by default
+  const [showGenerateModal, setShowGenerateModal] = useState(false);
+  const [targetTopic, setTargetTopic] = useState('');
+  const [timeframe, setTimeframe] = useState('8 weeks');
+  const [isGenerating, setIsGenerating] = useState(false);
+
+  const handleGenerateRoadmap = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!targetTopic.trim()) return;
+
+    setIsGenerating(true);
+    try {
+      const res = await fetch('/api/ai/generate-roadmap', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ topic: targetTopic.trim(), timeframe }),
+      });
+      const data = await res.json();
+
+      if (data && data.milestones) {
+        onUpdateRoadmap({
+          id: `rm-${Date.now()}`,
+          title: data.title || `${targetTopic} Mastery`,
+          roleTrack: targetTopic,
+          currentWeek: 1,
+          totalWeeks: parseInt(timeframe) || 8,
+          overallProgress: 15,
+          milestones: data.milestones,
+        });
+        confetti({ particleCount: 60, spread: 50 });
+      }
+    } catch (err) {
+      console.error(err);
+    } finally {
+      setIsGenerating(false);
+      setShowGenerateModal(false);
+      setTargetTopic('');
+    }
+  };
+
+  return (
+    <div className="space-y-4 px-5 pt-2 pb-24 animate-in fade-in duration-200">
+      {/* Title & AI Generator Button */}
+      <div className="flex items-center justify-between">
+        <div>
+          <h1 className="text-xl font-extrabold text-slate-900 dark:text-white">Active Roadmap</h1>
+          <p className="text-xs text-slate-500">Personalized milestone progression</p>
+        </div>
+        <button
+          onClick={() => setShowGenerateModal(true)}
+          className="px-3 py-2 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-bold transition flex items-center gap-1.5 shadow-sm shadow-indigo-500/20"
+        >
+          <Sparkles className="w-4 h-4" /> AI Generator
+        </button>
+      </div>
+
+      {/* Main Roadmap Banner */}
+      <div className="p-4 sm:p-5 rounded-3xl bg-gradient-to-br from-indigo-50/90 via-purple-50/50 to-slate-50 dark:from-slate-800/80 dark:via-indigo-950/30 dark:to-slate-900 border border-indigo-100/80 dark:border-slate-800 shadow-2xs space-y-3">
+        <div className="flex items-center justify-between">
+          <span className="text-[10px] font-bold uppercase tracking-wider text-indigo-600 dark:text-indigo-400">
+            {roadmap.roleTrack}
+          </span>
+          <span className="text-xs font-bold text-slate-500 dark:text-slate-400">
+            Week {roadmap.currentWeek} of {roadmap.totalWeeks}
+          </span>
+        </div>
+
+        <h2 className="text-lg font-extrabold text-slate-900 dark:text-white">
+          {roadmap.title}
+        </h2>
+
+        {/* Progress Bar */}
+        <div className="space-y-1.5">
+          <div className="flex justify-between items-center text-xs font-bold">
+            <span className="text-slate-400 text-[11px]">Track Completion</span>
+            <span className="text-indigo-600 dark:text-indigo-400">{roadmap.overallProgress}%</span>
+          </div>
+          <div className="w-full bg-slate-200/80 dark:bg-slate-700 h-2.5 rounded-full overflow-hidden">
+            <div
+              className="bg-gradient-to-r from-indigo-600 to-purple-600 h-2.5 rounded-full transition-all duration-500"
+              style={{ width: `${roadmap.overallProgress}%` }}
+            />
+          </div>
+        </div>
+      </div>
+
+      {/* Milestones Flow (Horizontal timeline indicators) */}
+      <div className="grid grid-cols-4 gap-1 p-2 bg-white dark:bg-slate-800/80 rounded-2xl border border-slate-100 dark:border-slate-800">
+        {roadmap.milestones.map((m, idx) => (
+          <div key={idx} className="text-center p-1">
+            <div
+              className={`w-6 h-6 mx-auto rounded-full flex items-center justify-center text-[10px] font-bold mb-1 ${
+                m.status === 'Completed'
+                  ? 'bg-emerald-500 text-white'
+                  : m.status === 'In Progress'
+                  ? 'bg-indigo-600 text-white ring-2 ring-indigo-200 dark:ring-indigo-800'
+                  : 'bg-slate-100 dark:bg-slate-700 text-slate-400'
+              }`}
+            >
+              {idx + 1}
+            </div>
+            <p className="text-[10px] font-bold text-slate-700 dark:text-slate-300 truncate">
+              {m.title}
+            </p>
+            <span
+              className={`text-[9px] font-semibold ${
+                m.status === 'Completed'
+                  ? 'text-emerald-500'
+                  : m.status === 'In Progress'
+                  ? 'text-indigo-600 dark:text-indigo-400'
+                  : 'text-slate-400'
+              }`}
+            >
+              {m.status}
+            </span>
+          </div>
+        ))}
+      </div>
+
+      {/* Milestones Details List */}
+      <div className="space-y-2.5">
+        {roadmap.milestones.map((milestone, idx) => {
+          const isExpanded = expandedMilestone === idx;
+
+          return (
+            <div
+              key={idx}
+              className={`rounded-2xl border transition-all overflow-hidden ${
+                milestone.status === 'In Progress'
+                  ? 'bg-white dark:bg-slate-800/90 border-indigo-200 dark:border-indigo-800/80 shadow-xs ring-1 ring-indigo-500/20'
+                  : 'bg-white dark:bg-slate-800/60 border-slate-100 dark:border-slate-800'
+              }`}
+            >
+              {/* Header */}
+              <button
+                onClick={() => setExpandedMilestone(isExpanded ? null : idx)}
+                className="w-full p-4 flex items-center justify-between text-left"
+              >
+                <div className="flex items-center gap-3">
+                  <div
+                    className={`w-8 h-8 rounded-xl flex items-center justify-center shrink-0 ${
+                      milestone.status === 'Completed'
+                        ? 'bg-emerald-50 dark:bg-emerald-950/40 text-emerald-600'
+                        : milestone.status === 'In Progress'
+                        ? 'bg-indigo-50 dark:bg-indigo-950/40 text-indigo-600'
+                        : 'bg-slate-100 dark:bg-slate-700 text-slate-400'
+                    }`}
+                  >
+                    {milestone.status === 'Completed' ? (
+                      <CheckCircle2 className="w-5 h-5 text-emerald-500" />
+                    ) : (
+                      <span className="text-xs font-bold">{idx + 1}</span>
+                    )}
+                  </div>
+                  <div>
+                    <div className="flex items-center gap-2">
+                      <span className="text-[10px] font-bold text-slate-400 uppercase">
+                        {milestone.phase} • {milestone.weeks}
+                      </span>
+                    </div>
+                    <h3 className="text-sm font-bold text-slate-900 dark:text-white">
+                      {milestone.title}
+                    </h3>
+                  </div>
+                </div>
+
+                <div className="flex items-center gap-2">
+                  <span
+                    className={`text-[11px] font-bold px-2 py-0.5 rounded-full ${
+                      milestone.status === 'Completed'
+                        ? 'bg-emerald-50 dark:bg-emerald-950/40 text-emerald-600 dark:text-emerald-400'
+                        : milestone.status === 'In Progress'
+                        ? 'bg-indigo-50 dark:bg-indigo-950/40 text-indigo-600 dark:text-indigo-400'
+                        : 'bg-slate-100 dark:bg-slate-700 text-slate-400'
+                    }`}
+                  >
+                    {milestone.status}
+                  </span>
+                  {isExpanded ? (
+                    <ChevronUp className="w-4 h-4 text-slate-400" />
+                  ) : (
+                    <ChevronDown className="w-4 h-4 text-slate-400" />
+                  )}
+                </div>
+              </button>
+
+              {/* Expanded Subtasks */}
+              {isExpanded && (
+                <div className="px-4 pb-4 pt-1 border-t border-slate-100 dark:border-slate-700/60 space-y-2">
+                  <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400">
+                    Syllabus Checkpoints
+                  </span>
+                  <div className="space-y-1.5">
+                    {milestone.tasks.map((task, tIdx) => (
+                      <div
+                        key={tIdx}
+                        className="p-2 rounded-xl bg-slate-50 dark:bg-slate-900/60 border border-slate-100 dark:border-slate-800 flex items-center gap-2 text-xs text-slate-700 dark:text-slate-300"
+                      >
+                        {milestone.status === 'Completed' ? (
+                          <CheckCircle2 className="w-3.5 h-3.5 text-emerald-500 shrink-0" />
+                        ) : (
+                          <Circle className="w-3.5 h-3.5 text-slate-300 dark:text-slate-600 shrink-0" />
+                        )}
+                        <span>{task}</span>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+            </div>
+          );
+        })}
+      </div>
+
+      {/* AI Roadmap Generator Modal */}
+      {showGenerateModal && (
+        <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-2xs flex items-center justify-center p-4">
+          <div className="bg-white dark:bg-slate-900 w-full max-w-sm rounded-3xl p-5 border border-slate-200 dark:border-slate-800 shadow-2xl space-y-4">
+            <div className="flex items-center gap-2">
+              <span className="p-2 rounded-xl bg-indigo-50 dark:bg-indigo-950/60 text-indigo-600">
+                <Sparkles className="w-4 h-4" />
+              </span>
+              <div>
+                <h3 className="text-base font-bold text-slate-900 dark:text-white">
+                  Generate AI Roadmap
+                </h3>
+                <p className="text-xs text-slate-500">Gemini tailored 4-phase curriculum</p>
+              </div>
+            </div>
+
+            <form onSubmit={handleGenerateRoadmap} className="space-y-3">
+              <div>
+                <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1">
+                  Target Topic / Career Path
+                </label>
+                <input
+                  type="text"
+                  required
+                  placeholder="e.g. Distributed Systems & Kafka"
+                  value={targetTopic}
+                  onChange={(e) => setTargetTopic(e.target.value)}
+                  className="w-full px-3 py-2 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-xs focus:ring-2 focus:ring-indigo-500"
+                />
+              </div>
+
+              <div>
+                <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1">
+                  Target Duration
+                </label>
+                <select
+                  value={timeframe}
+                  onChange={(e) => setTimeframe(e.target.value)}
+                  className="w-full px-3 py-2 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-xs focus:ring-2 focus:ring-indigo-500"
+                >
+                  <option value="4 weeks">4 Weeks (Intensive)</option>
+                  <option value="8 weeks">8 Weeks (Standard)</option>
+                  <option value="12 weeks">12 Weeks (Comprehensive)</option>
+                </select>
+              </div>
+
+              <div className="flex gap-2 pt-2">
+                <button
+                  type="button"
+                  onClick={() => setShowGenerateModal(false)}
+                  disabled={isGenerating}
+                  className="flex-1 py-2 rounded-xl bg-slate-100 dark:bg-slate-800 text-xs font-semibold text-slate-600 dark:text-slate-300"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  disabled={isGenerating}
+                  className="flex-1 py-2 rounded-xl bg-indigo-600 text-white text-xs font-bold disabled:opacity-50 flex items-center justify-center gap-1.5"
+                >
+                  {isGenerating ? (
+                    'Generating...'
+                  ) : (
+                    <>
+                      <Sparkles className="w-3.5 h-3.5" /> Generate
+                    </>
+                  )}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+};
