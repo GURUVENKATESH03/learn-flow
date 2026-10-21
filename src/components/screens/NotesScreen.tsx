@@ -134,10 +134,16 @@ export const NotesScreen: React.FC<NotesScreenProps> = ({
       {/* Notes List */}
       <div className="space-y-3">
         {filteredNotes.length === 0 ? (
-          <div className="py-12 text-center space-y-2">
+          <div className="py-12 text-center space-y-3">
             <BookOpen className="w-8 h-8 text-slate-300 dark:text-slate-600 mx-auto" />
-            <p className="text-sm font-semibold text-slate-500">No notes found</p>
-            <p className="text-xs text-slate-400">Try searching for something else or create a new note.</p>
+            <p className="text-sm font-semibold text-slate-500">No notes created yet</p>
+            <p className="text-xs text-slate-400">Capture code snippets, dictate voice notes, and build mind maps.</p>
+            <button
+              onClick={onOpenNewNote}
+              className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-bold transition shadow-xs"
+            >
+              <Plus className="w-3.5 h-3.5" /> Create First Note
+            </button>
           </div>
         ) : (
           filteredNotes.map((note) => (
@@ -152,6 +158,19 @@ export const NotesScreen: React.FC<NotesScreenProps> = ({
                 </h3>
                 <span className="text-[10px] text-slate-400 whitespace-nowrap">{note.timeAgo}</span>
               </div>
+
+              {note.imageUrl && (
+                <div className="relative rounded-xl overflow-hidden h-24 bg-slate-950 border border-slate-200 dark:border-slate-700">
+                  <img
+                    src={note.imageUrl}
+                    alt={note.title}
+                    className="w-full h-full object-cover object-center group-hover:scale-105 transition-transform duration-300"
+                  />
+                  <span className="absolute bottom-1.5 left-1.5 px-1.5 py-0.5 rounded bg-black/70 backdrop-blur-xs text-[9px] text-white font-medium">
+                    Diagram Attached
+                  </span>
+                </div>
+              )}
 
               <p className="text-xs text-slate-600 dark:text-slate-300 line-clamp-2 leading-relaxed">
                 {note.summary || note.content}

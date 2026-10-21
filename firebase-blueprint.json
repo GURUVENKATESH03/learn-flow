@@ -1,0 +1,270 @@
+{
+  "entities": {
+    "UserProfile": {
+      "title": "UserProfile",
+      "description": "User profile document storing basic account and engagement data",
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "Unique user identifier matching Firebase Auth UID"
+        },
+        "name": {
+          "type": "string",
+          "description": "User display name"
+        },
+        "email": {
+          "type": "string",
+          "description": "User Google email address"
+        },
+        "role": {
+          "type": "string",
+          "description": "Developer or learner role title"
+        },
+        "avatarUrl": {
+          "type": "string",
+          "description": "Profile picture URL"
+        },
+        "streak": {
+          "type": "integer",
+          "description": "Active learning streak in days"
+        },
+        "totalNotes": {
+          "type": "integer",
+          "description": "Total number of notes created"
+        },
+        "totalProjects": {
+          "type": "integer",
+          "description": "Total number of repositories/projects tracked"
+        },
+        "weeklyGoals": {
+          "type": "object",
+          "description": "Target weekly milestones and goals"
+        },
+        "createdAt": {
+          "type": "string",
+          "description": "ISO timestamp of user creation"
+        },
+        "updatedAt": {
+          "type": "string",
+          "description": "ISO timestamp of last profile update"
+        }
+      },
+      "required": ["id", "name", "email"]
+    },
+    "Note": {
+      "title": "Note",
+      "description": "Learning note with mind map and optional image attachments",
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "Unique identifier of the note"
+        },
+        "userId": {
+          "type": "string",
+          "description": "Owner user UID"
+        },
+        "title": {
+          "type": "string",
+          "description": "Note title",
+          "maxLength": 200
+        },
+        "content": {
+          "type": "string",
+          "description": "Markdown note content body",
+          "maxLength": 50000
+        },
+        "summary": {
+          "type": "string",
+          "description": "Brief summary",
+          "maxLength": 500
+        },
+        "imageUrl": {
+          "type": "string",
+          "description": "Attached image URL or data URI"
+        },
+        "tags": {
+          "type": "array",
+          "description": "Topic tags"
+        },
+        "color": {
+          "type": "string",
+          "description": "UI accent color badge"
+        },
+        "mindMapNodes": {
+          "type": "array",
+          "description": "Visual concept map nodes"
+        },
+        "createdAt": {
+          "type": "string",
+          "description": "Creation timestamp"
+        },
+        "updatedAt": {
+          "type": "string",
+          "description": "Update timestamp"
+        }
+      },
+      "required": ["id", "userId", "title"]
+    },
+    "TaskItem": {
+      "title": "TaskItem",
+      "description": "Daily learning checklist item",
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "Unique task ID"
+        },
+        "userId": {
+          "type": "string",
+          "description": "Owner UID"
+        },
+        "text": {
+          "type": "string",
+          "description": "Task description text",
+          "maxLength": 300
+        },
+        "completed": {
+          "type": "boolean",
+          "description": "Completion state"
+        },
+        "category": {
+          "type": "string",
+          "description": "Focus category"
+        },
+        "createdAt": {
+          "type": "string",
+          "description": "Creation timestamp"
+        }
+      },
+      "required": ["id", "userId", "text", "completed"]
+    },
+    "Project": {
+      "title": "Project",
+      "description": "GitHub tracked repository or development project",
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "Unique project identifier"
+        },
+        "userId": {
+          "type": "string",
+          "description": "Owner UID"
+        },
+        "title": {
+          "type": "string",
+          "description": "Repository or project title",
+          "maxLength": 150
+        },
+        "description": {
+          "type": "string",
+          "description": "Project summary",
+          "maxLength": 2000
+        },
+        "progress": {
+          "type": "integer",
+          "description": "Progress percentage from 0 to 100"
+        },
+        "tags": {
+          "type": "array",
+          "description": "Tech stack tags"
+        },
+        "repoUrl": {
+          "type": "string",
+          "description": "GitHub repository URL"
+        },
+        "visibility": {
+          "type": "string",
+          "enum": ["public", "private"],
+          "description": "Visibility scope of the repository"
+        },
+        "status": {
+          "type": "string",
+          "enum": ["Active", "Completed", "In Review"]
+        },
+        "commits": {
+          "type": "array",
+          "description": "Git commit history records"
+        },
+        "tasks": {
+          "type": "array",
+          "description": "Subtasks for the project"
+        },
+        "createdAt": {
+          "type": "string",
+          "description": "Creation timestamp"
+        }
+      },
+      "required": ["id", "userId", "title"]
+    },
+    "Roadmap": {
+      "title": "Roadmap",
+      "description": "Personalized learning roadmap curriculum",
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "Roadmap ID"
+        },
+        "userId": {
+          "type": "string",
+          "description": "Owner UID"
+        },
+        "title": {
+          "type": "string",
+          "description": "Roadmap curriculum title",
+          "maxLength": 150
+        },
+        "roleTrack": {
+          "type": "string",
+          "description": "Career track designation"
+        },
+        "currentWeek": {
+          "type": "integer",
+          "description": "Current week number"
+        },
+        "totalWeeks": {
+          "type": "integer",
+          "description": "Total duration in weeks"
+        },
+        "overallProgress": {
+          "type": "integer",
+          "description": "Percentage completed"
+        },
+        "milestones": {
+          "type": "array",
+          "description": "Curriculum milestone phases"
+        },
+        "createdAt": {
+          "type": "string",
+          "description": "Creation timestamp"
+        }
+      },
+      "required": ["id", "userId", "title"]
+    }
+  },
+  "firestore": {
+    "/users/{userId}": {
+      "schema": "UserProfile",
+      "description": "Root user profile document"
+    },
+    "/users/{userId}/notes/{noteId}": {
+      "schema": "Note",
+      "description": "Individual learning notes owned by user"
+    },
+    "/users/{userId}/tasks/{taskId}": {
+      "schema": "TaskItem",
+      "description": "Daily focus tasks owned by user"
+    },
+    "/users/{userId}/projects/{projectId}": {
+      "schema": "Project",
+      "description": "Projects and tracked repositories owned by user"
+    },
+    "/users/{userId}/roadmaps/{roadmapId}": {
+      "schema": "Roadmap",
+      "description": "Learning roadmaps owned by user"
+    }
+  }
+}

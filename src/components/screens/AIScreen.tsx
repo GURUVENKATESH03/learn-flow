@@ -24,7 +24,7 @@ export const AIScreen: React.FC<AIScreenProps> = ({ notes, onStartQuiz, onSaveAs
     {
       id: 'm1',
       sender: 'ai',
-      text: "Hello Guru! 👋 I am your LearnFlow AI companion. I'm connected to your notes on Kafka, Spring Boot, Vue.js, and your active projects. How can I help you level up today?",
+      text: "Hello! 👋 I am your LearnFlow AI companion powered by Gemini 3.8 Flash. Ask me any technical question, request architecture breakdowns, or practice technical quizzes.",
       timestamp: 'Just now',
     },
   ]);
@@ -35,10 +35,10 @@ export const AIScreen: React.FC<AIScreenProps> = ({ notes, onStartQuiz, onSaveAs
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
   const suggestionPrompts = [
-    'Explain Kafka in simple terms',
-    'Compare React vs Vue',
-    'Suggest next topics for Spring Boot',
-    'Generate quiz from my notes',
+    'Explain Clean Architecture principles',
+    'Compare SQL vs NoSQL databases',
+    'Explain async event-driven systems',
+    'Generate a quick technical quiz',
   ];
 
   const scrollToBottom = () => {
@@ -53,9 +53,13 @@ export const AIScreen: React.FC<AIScreenProps> = ({ notes, onStartQuiz, onSaveAs
     const text = messageText.trim();
     if (!text || loading) return;
 
-    if (text === 'Generate quiz from my notes') {
-      const topNote = notes[0];
-      onStartQuiz(topNote.title, topNote.content);
+    if (text === 'Generate a quick technical quiz') {
+      if (notes.length > 0) {
+        const topNote = notes[0];
+        onStartQuiz(topNote.title, topNote.content);
+      } else {
+        onStartQuiz('Software Engineering Fundamentals', 'Clean code, data structures, and architecture principles.');
+      }
       return;
     }
 

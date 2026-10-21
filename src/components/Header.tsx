@@ -1,16 +1,44 @@
 import React, { useState } from 'react';
 import { UserProfile } from '../types';
-import { BookOpen, Bell, Flame, CheckCircle2, Award, Sparkles, X, ChevronRight, User } from 'lucide-react';
+import {
+  BookOpen,
+  Bell,
+  Flame,
+  CheckCircle2,
+  Award,
+  Sparkles,
+  X,
+  ChevronRight,
+  User,
+  Sun,
+  Moon,
+  LogOut,
+  ShieldCheck,
+  Check,
+  Smartphone,
+} from 'lucide-react';
+import { ExpoExportModal } from './modals/ExpoExportModal';
 
 interface HeaderProps {
   user: UserProfile;
+  theme: 'light' | 'dark';
+  onToggleTheme: () => void;
+  onLogout?: () => void;
+  onResetData?: () => void;
   onOpenNotifications?: () => void;
   onOpenProfile?: () => void;
 }
 
-export const Header: React.FC<HeaderProps> = ({ user }) => {
+export const Header: React.FC<HeaderProps> = ({
+  user,
+  theme,
+  onToggleTheme,
+  onLogout,
+  onResetData,
+}) => {
   const [showNotifications, setShowNotifications] = useState(false);
   const [showProfileModal, setShowProfileModal] = useState(false);
+  const [showExpoModal, setShowExpoModal] = useState(false);
   const [hasUnread, setHasUnread] = useState(true);
 
   const notifications = [
@@ -23,23 +51,23 @@ export const Header: React.FC<HeaderProps> = ({ user }) => {
     },
     {
       id: '2',
-      title: 'Roadmap Progress',
-      desc: 'Spring Boot Security milestone is 60% complete.',
-      time: '2h ago',
+      title: 'Google & Gemini Connected ⚡',
+      desc: 'Your Gemini AI session is active with your Google profile.',
+      time: '1h ago',
       read: true,
     },
     {
       id: '3',
-      title: 'AI Insight Available',
-      desc: 'Generated 3 new flashcards from your Kafka Basics notes.',
-      time: '1d ago',
+      title: 'Roadmap Progress',
+      desc: 'Spring Boot Security milestone is 60% complete.',
+      time: '2h ago',
       read: true,
     },
   ];
 
   return (
     <>
-      <header className="px-5 pt-3 pb-3 flex items-center justify-between bg-white/90 dark:bg-slate-900/90 backdrop-blur-md sticky top-0 z-30 border-b border-slate-100 dark:border-slate-800">
+      <header className="px-5 pt-3 pb-3 flex items-center justify-between bg-white/95 dark:bg-slate-900/95 backdrop-blur-md sticky top-0 z-30 border-b border-slate-100 dark:border-slate-800 transition-colors duration-200">
         {/* Brand logo & name */}
         <div className="flex items-center gap-2.5">
           <div className="w-8 h-8 rounded-xl bg-gradient-to-br from-indigo-500 to-indigo-700 flex items-center justify-center text-white shadow-xs">
@@ -50,8 +78,22 @@ export const Header: React.FC<HeaderProps> = ({ user }) => {
           </span>
         </div>
 
-        {/* Right actions: Notifications & Avatar */}
-        <div className="flex items-center gap-2.5">
+        {/* Right actions: Theme Switcher, Notifications & Avatar */}
+        <div className="flex items-center gap-2">
+          {/* Light / Dark Mode Toggle Button */}
+          <button
+            onClick={onToggleTheme}
+            className="p-2 rounded-xl text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 transition"
+            title={theme === 'dark' ? 'Switch to Light Theme' : 'Switch to Dark Theme'}
+            aria-label="Toggle Theme"
+          >
+            {theme === 'dark' ? (
+              <Sun className="w-4 h-4 text-amber-400 hover:rotate-45 transition-transform" />
+            ) : (
+              <Moon className="w-4 h-4 text-slate-600 hover:-rotate-12 transition-transform" />
+            )}
+          </button>
+
           {/* Notification bell */}
           <button
             onClick={() => {
@@ -113,11 +155,11 @@ export const Header: React.FC<HeaderProps> = ({ user }) => {
         </div>
       )}
 
-      {/* User Profile Modal */}
+      {/* User Profile Modal with Theme Controls & Logout */}
       {showProfileModal && (
         <div className="fixed inset-0 z-50 bg-black/50 backdrop-blur-2xs flex items-center justify-center p-4 animate-in fade-in">
-          <div className="bg-white dark:bg-slate-900 w-full max-w-sm rounded-2xl shadow-xl border border-slate-200 dark:border-slate-800 p-5 overflow-hidden">
-            <div className="flex justify-between items-start mb-4">
+          <div className="bg-white dark:bg-slate-900 w-full max-w-sm rounded-3xl shadow-xl border border-slate-200 dark:border-slate-800 p-5 overflow-hidden space-y-4">
+            <div className="flex justify-between items-start">
               <div className="flex items-center gap-3">
                 <img
                   src={user.avatarUrl}
@@ -125,8 +167,9 @@ export const Header: React.FC<HeaderProps> = ({ user }) => {
                   className="w-12 h-12 rounded-full object-cover ring-2 ring-indigo-500"
                 />
                 <div>
-                  <h3 className="text-base font-bold text-slate-900 dark:text-white">Guru Venkatesh</h3>
+                  <h3 className="text-base font-bold text-slate-900 dark:text-white">{user.name}</h3>
                   <p className="text-xs text-indigo-600 dark:text-indigo-400 font-medium">{user.role}</p>
+                  <p className="text-[10px] text-slate-400">{user.email}</p>
                 </div>
               </div>
               <button
@@ -137,7 +180,94 @@ export const Header: React.FC<HeaderProps> = ({ user }) => {
               </button>
             </div>
 
-            <div className="grid grid-cols-2 gap-2.5 mb-4">
+            {/* Firebase & Google Authentication Status */}
+            <div className="p-2.5 rounded-2xl bg-indigo-50/60 dark:bg-indigo-950/40 border border-indigo-100 dark:border-indigo-900/60 flex items-center justify-between text-xs">
+              <div className="flex items-center gap-2">
+                <ShieldCheck className="w-4 h-4 text-emerald-500" />
+                <span className="font-semibold text-slate-800 dark:text-slate-200">
+                  Firebase Cloud Firestore & Auth
+                </span>
+              </div>
+              <span className="text-[10px] font-bold px-1.5 py-0.5 rounded bg-emerald-100 dark:bg-emerald-950 text-emerald-700 dark:text-emerald-300">
+                Live Sync
+              </span>
+            </div>
+
+            {/* Database Export Button */}
+            <button
+              onClick={() => {
+                const exportData = {
+                  user,
+                  exportedAt: new Date().toISOString(),
+                  database: 'Google Cloud Firestore (Enterprise Edition)',
+                  app: 'LearnFlow Mobile',
+                };
+                const blob = new Blob([JSON.stringify(exportData, null, 2)], {
+                  type: 'application/json',
+                });
+                const url = URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                a.href = url;
+                a.download = `learnflow-backup-${Date.now()}.json`;
+                a.click();
+                URL.revokeObjectURL(url);
+              }}
+              className="w-full py-2.5 px-3 rounded-2xl bg-slate-100 dark:bg-slate-800 hover:bg-indigo-50 dark:hover:bg-indigo-950/50 text-xs font-bold text-slate-700 dark:text-slate-200 transition border border-slate-200 dark:border-slate-700 flex items-center justify-center gap-2"
+            >
+              <span>Export Database Backup (.json)</span>
+            </button>
+
+            {/* Expo Mobile App (React Native) Project */}
+            <button
+              onClick={() => {
+                setShowProfileModal(false);
+                setShowExpoModal(true);
+              }}
+              className="w-full py-2.5 px-3 rounded-2xl bg-indigo-50 dark:bg-indigo-950/60 hover:bg-indigo-100 dark:hover:bg-indigo-900/50 text-xs font-bold text-indigo-700 dark:text-indigo-300 transition border border-indigo-200 dark:border-indigo-800 flex items-center justify-center gap-2"
+            >
+              <Smartphone className="w-3.5 h-3.5" />
+              <span>Export / View Expo Mobile App</span>
+            </button>
+
+            {/* Theme Switcher in Profile */}
+            <div className="p-3 rounded-2xl bg-slate-50 dark:bg-slate-800/60 border border-slate-100 dark:border-slate-800 space-y-2">
+              <div className="flex items-center justify-between">
+                <span className="text-xs font-bold text-slate-700 dark:text-slate-300">
+                  Appearance Theme
+                </span>
+                <span className="text-[10px] font-semibold text-slate-400 uppercase">
+                  {theme} mode
+                </span>
+              </div>
+              <div className="grid grid-cols-2 gap-2">
+                <button
+                  onClick={() => {
+                    if (theme !== 'light') onToggleTheme();
+                  }}
+                  className={`py-2 px-3 rounded-xl text-xs font-bold transition flex items-center justify-center gap-1.5 ${
+                    theme === 'light'
+                      ? 'bg-white text-indigo-600 shadow-sm border border-slate-200'
+                      : 'text-slate-400 hover:text-slate-200'
+                  }`}
+                >
+                  <Sun className="w-3.5 h-3.5 text-amber-500" /> Light
+                </button>
+                <button
+                  onClick={() => {
+                    if (theme !== 'dark') onToggleTheme();
+                  }}
+                  className={`py-2 px-3 rounded-xl text-xs font-bold transition flex items-center justify-center gap-1.5 ${
+                    theme === 'dark'
+                      ? 'bg-slate-700 text-white shadow-sm border border-slate-600'
+                      : 'text-slate-400 hover:text-slate-600'
+                  }`}
+                >
+                  <Moon className="w-3.5 h-3.5 text-indigo-400" /> Dark
+                </button>
+              </div>
+            </div>
+
+            <div className="grid grid-cols-2 gap-2.5">
               <div className="p-3 rounded-xl bg-slate-50 dark:bg-slate-800/60 border border-slate-100 dark:border-slate-800 text-center">
                 <span className="text-xs text-slate-500">Learning Streak</span>
                 <p className="text-lg font-extrabold text-amber-500 flex items-center justify-center gap-1 mt-0.5">
@@ -153,29 +283,59 @@ export const Header: React.FC<HeaderProps> = ({ user }) => {
               </div>
             </div>
 
-            <div className="space-y-2 text-xs text-slate-600 dark:text-slate-300">
-              <div className="flex justify-between py-1.5 border-b border-slate-100 dark:border-slate-800">
+            <div className="space-y-1.5 text-xs text-slate-600 dark:text-slate-300">
+              <div className="flex justify-between py-1 border-b border-slate-100 dark:border-slate-800">
                 <span className="text-slate-400">Total Notes</span>
                 <span className="font-semibold text-slate-800 dark:text-slate-200">{user.totalNotes}</span>
               </div>
-              <div className="flex justify-between py-1.5 border-b border-slate-100 dark:border-slate-800">
+              <div className="flex justify-between py-1 border-b border-slate-100 dark:border-slate-800">
                 <span className="text-slate-400">Projects Tracked</span>
                 <span className="font-semibold text-slate-800 dark:text-slate-200">{user.totalProjects}</span>
               </div>
-              <div className="flex justify-between py-1.5">
-                <span className="text-slate-400">Primary Track</span>
-                <span className="font-semibold text-slate-800 dark:text-slate-200">Java Backend Developer</span>
+              <div className="flex justify-between py-1">
+                <span className="text-slate-400">Default AI Model</span>
+                <span className="font-semibold text-indigo-600 dark:text-indigo-400">Gemini 3.8 Flash</span>
               </div>
             </div>
 
+            {/* Reset Database to Fresh Start */}
+            {onResetData && (
+              <button
+                onClick={() => {
+                  setShowProfileModal(false);
+                  onResetData();
+                }}
+                className="w-full py-2.5 rounded-xl border border-rose-300 dark:border-rose-900 bg-rose-50/50 dark:bg-rose-950/20 text-xs font-bold text-rose-600 dark:text-rose-400 hover:bg-rose-100 dark:hover:bg-rose-950/40 transition flex items-center justify-center gap-1.5"
+              >
+                <span>Reset Database to Fresh (0 Notes, 0 Projects)</span>
+              </button>
+            )}
+
+            {/* Logout button */}
+            {onLogout && (
+              <button
+                onClick={() => {
+                  setShowProfileModal(false);
+                  onLogout();
+                }}
+                className="w-full py-2.5 rounded-xl border border-rose-200 dark:border-rose-900 text-xs font-bold text-rose-600 dark:text-rose-400 hover:bg-rose-50 dark:hover:bg-rose-950/40 transition flex items-center justify-center gap-1.5"
+              >
+                <LogOut className="w-3.5 h-3.5" /> Sign Out (Switch Account)
+              </button>
+            )}
+
             <button
               onClick={() => setShowProfileModal(false)}
-              className="w-full mt-4 py-2.5 rounded-xl bg-slate-100 dark:bg-slate-800 text-xs font-bold text-slate-700 dark:text-slate-200 hover:bg-slate-200 transition"
+              className="w-full py-2.5 rounded-xl bg-slate-100 dark:bg-slate-800 text-xs font-bold text-slate-700 dark:text-slate-200 hover:bg-slate-200 dark:hover:bg-slate-700 transition"
             >
               Close
             </button>
           </div>
         </div>
+      )}
+
+      {showExpoModal && (
+        <ExpoExportModal onClose={() => setShowExpoModal(false)} />
       )}
     </>
   );

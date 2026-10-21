@@ -1,6 +1,20 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { Note } from '../../types';
-import { X, Plus, Sparkles, Tag, Check, Mic, MicOff, Volume2, AlertCircle } from 'lucide-react';
+import {
+  X,
+  Plus,
+  Sparkles,
+  Tag,
+  Check,
+  Mic,
+  MicOff,
+  Volume2,
+  AlertCircle,
+  ImageIcon,
+  UploadCloud,
+  Trash2,
+  Image as ImageLucide,
+} from 'lucide-react';
 
 interface NewNoteModalProps {
   onClose: () => void;
@@ -13,6 +27,10 @@ export const NewNoteModal: React.FC<NewNoteModalProps> = ({ onClose, onSave }) =
   const [tagInput, setTagInput] = useState('');
   const [tags, setTags] = useState<string[]>(['Spring Boot', 'Backend']);
   const [isAutoTagging, setIsAutoTagging] = useState(false);
+
+  // Image Attachment State
+  const [imageUrl, setImageUrl] = useState<string | null>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   // Voice-to-Text State
   const [isListening, setIsListening] = useState(false);
@@ -69,7 +87,7 @@ export const NewNoteModal: React.FC<NewNoteModalProps> = ({ onClose, onSave }) =
         if (event.error === 'not-allowed') {
           setMicError('Microphone permission was denied. Please allow microphone access.');
         } else if (event.error === 'no-speech') {
-          // ignore silent pause
+          // ignore
         } else {
           setMicError(`Voice input notice: ${event.error}`);
         }
@@ -88,9 +106,7 @@ export const NewNoteModal: React.FC<NewNoteModalProps> = ({ onClose, onSave }) =
       if (recognitionRef.current) {
         try {
           recognitionRef.current.stop();
-        } catch (e) {
-          // ignore
-        }
+        } catch (e) {}
       }
     };
   }, [activeField]);
@@ -98,23 +114,18 @@ export const NewNoteModal: React.FC<NewNoteModalProps> = ({ onClose, onSave }) =
   const toggleListening = async () => {
     setMicError(null);
 
-    // If already listening, stop
     if (isListening) {
       if (recognitionRef.current) {
         try {
           recognitionRef.current.stop();
-        } catch (e) {
-          // ignore
-        }
+        } catch (e) {}
       }
       setIsListening(false);
       setInterimText('');
       return;
     }
 
-    // Check if SpeechRecognition is supported
     if (!recognitionRef.current) {
-      // Fallback for browsers without Web Speech API: request microphone to demonstrate permission and provide friendly demo transcription
       try {
         if (navigator.mediaDevices && navigator.mediaDevices.getUserMedia) {
           await navigator.mediaDevices.getUserMedia({ audio: true });
@@ -143,8 +154,6 @@ export const NewNoteModal: React.FC<NewNoteModalProps> = ({ onClose, onSave }) =
     try {
       recognitionRef.current.start();
     } catch (err: any) {
-      console.warn('Start recognition error:', err);
-      // Restart if already running
       try {
         recognitionRef.current.stop();
         setTimeout(() => recognitionRef.current.start(), 200);
@@ -152,6 +161,26 @@ export const NewNoteModal: React.FC<NewNoteModalProps> = ({ onClose, onSave }) =
         setMicError('Could not initialize microphone. Please try again.');
       }
     }
+  };
+
+  // Image Upload Handling
+  const handleImageFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      if (file.size > 5 * 1024 * 1024) {
+        alert('Please choose an image under 5MB.');
+        return;
+      }
+      const reader = new FileReader();
+      reader.onload = () => {
+        setImageUrl(reader.result as string);
+      };
+      reader.readAsDataURL(file);
+    }
+  };
+
+  const handleSelectSampleDiagram = (url: string) => {
+    setImageUrl(url);
   };
 
   const handleAddTag = () => {
@@ -178,18 +207,16 @@ export const NewNoteModal: React.FC<NewNoteModalProps> = ({ onClose, onSave }) =
     e.preventDefault();
     if (!title.trim() || !content.trim()) return;
 
-    // Stop listening if active
     if (isListening && recognitionRef.current) {
       try {
         recognitionRef.current.stop();
-      } catch (e) {
-        // ignore
-      }
+      } catch (e) {}
     }
 
     onSave({
       title: title.trim(),
       content: content.trim(),
+      imageUrl: imageUrl || undefined,
       tags,
       summary: content.slice(0, 100) + '...',
       color: 'teal',
@@ -208,7 +235,7 @@ export const NewNoteModal: React.FC<NewNoteModalProps> = ({ onClose, onSave }) =
         <div className="p-4 sm:p-5 border-b border-slate-100 dark:border-slate-800 flex items-center justify-between">
           <div>
             <h3 className="text-base font-bold text-slate-900 dark:text-white">Create New Smart Note</h3>
-            <p className="text-xs text-slate-500">Capture code, patterns, or dictate via voice</p>
+            <p className="text-xs text-slate-500">Dictate via voice & attach architecture images</p>
           </div>
           <button
             onClick={() => {
@@ -321,6 +348,94 @@ export const NewNoteModal: React.FC<NewNoteModalProps> = ({ onClose, onSave }) =
             </div>
           )}
 
+          {/* Image Attachment Area */}
+          <div className="space-y-2">
+            <div className="flex items-center justify-between">
+              <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 flex items-center gap-1.5">
+                <ImageIcon className="w-3.5 h-3.5 text-indigo-500" />
+                Image Attachment
+              </label>
+              {imageUrl && (
+                <button
+                  type="button"
+                  onClick={() => setImageUrl(null)}
+                  className="text-[11px] font-semibold text-rose-500 hover:underline flex items-center gap-1"
+                >
+                  <Trash2 className="w-3 h-3" /> Remove Image
+                </button>
+              )}
+            </div>
+
+            {imageUrl ? (
+              <div className="relative rounded-2xl overflow-hidden border border-slate-200 dark:border-slate-700 group bg-slate-950">
+                <img
+                  src={imageUrl}
+                  alt="Attached diagram"
+                  className="w-full h-36 object-cover object-center"
+                />
+                <button
+                  type="button"
+                  onClick={() => setImageUrl(null)}
+                  className="absolute top-2 right-2 p-1.5 rounded-full bg-slate-900/80 text-white hover:bg-rose-600 transition"
+                >
+                  <X className="w-4 h-4" />
+                </button>
+              </div>
+            ) : (
+              <div className="space-y-2">
+                <div
+                  onClick={() => fileInputRef.current?.click()}
+                  className="p-3.5 rounded-2xl border-2 border-dashed border-slate-200 dark:border-slate-700 hover:border-indigo-400 dark:hover:border-indigo-600 bg-slate-50/60 dark:bg-slate-800/40 text-center cursor-pointer transition flex flex-col items-center justify-center gap-1 group"
+                >
+                  <UploadCloud className="w-5 h-5 text-indigo-500 group-hover:scale-110 transition-transform" />
+                  <span className="text-xs font-bold text-slate-700 dark:text-slate-300">
+                    Upload Architecture Diagram or Screenshot
+                  </span>
+                  <span className="text-[10px] text-slate-400">
+                    PNG, JPG, or SVG up to 5MB
+                  </span>
+                </div>
+
+                <input
+                  type="file"
+                  ref={fileInputRef}
+                  accept="image/*"
+                  onChange={handleImageFileChange}
+                  className="hidden"
+                />
+
+                {/* Quick Preset Diagrams */}
+                <div className="flex items-center gap-1.5 pt-0.5 overflow-x-auto no-scrollbar">
+                  <span className="text-[10px] font-semibold text-slate-400 whitespace-nowrap">
+                    Presets:
+                  </span>
+                  <button
+                    type="button"
+                    onClick={() =>
+                      handleSelectSampleDiagram(
+                        'https://images.unsplash.com/photo-1558494949-ef010cbdcc31?w=800&auto=format&fit=crop&q=80'
+                      )
+                    }
+                    className="px-2 py-1 rounded-lg bg-slate-100 dark:bg-slate-800 text-[10px] font-medium text-slate-600 dark:text-slate-300 border border-slate-200 dark:border-slate-700 hover:text-indigo-600 whitespace-nowrap"
+                  >
+                    + Server Architecture
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() =>
+                      handleSelectSampleDiagram(
+                        'https://images.unsplash.com/photo-1526374965328-7f61d4dc18c5?w=800&auto=format&fit=crop&q=80'
+                      )
+                    }
+                    className="px-2 py-1 rounded-lg bg-slate-100 dark:bg-slate-800 text-[10px] font-medium text-slate-600 dark:text-slate-300 border border-slate-200 dark:border-slate-700 hover:text-indigo-600 whitespace-nowrap"
+                  >
+                    + Security Matrix
+                  </button>
+                </div>
+              </div>
+            )}
+          </div>
+
           {/* Content / Code Snippet */}
           <div>
             <div className="flex items-center justify-between mb-1">
@@ -352,7 +467,7 @@ export const NewNoteModal: React.FC<NewNoteModalProps> = ({ onClose, onSave }) =
             </div>
             <textarea
               required
-              rows={6}
+              rows={5}
               placeholder="Write or dictate your note markdown or architecture thoughts..."
               value={content}
               onFocus={() => setActiveField('content')}

@@ -6,9 +6,10 @@ interface NoteDetailModalProps {
   note: Note;
   onClose: () => void;
   onStartQuiz: (topic: string, content: string) => void;
+  onDeleteNote?: (id: string) => void;
 }
 
-export const NoteDetailModal: React.FC<NoteDetailModalProps> = ({ note, onClose, onStartQuiz }) => {
+export const NoteDetailModal: React.FC<NoteDetailModalProps> = ({ note, onClose, onStartQuiz, onDeleteNote }) => {
   const [activeTab, setActiveTab] = useState<'content' | 'mindmap' | 'ai'>('content');
   const [copied, setCopied] = useState(false);
   const [aiAnalysis, setAiAnalysis] = useState<{
@@ -127,6 +128,21 @@ export const NoteDetailModal: React.FC<NoteDetailModalProps> = ({ note, onClose,
                   {copied ? 'Copied' : 'Copy'}
                 </button>
               </div>
+              {note.imageUrl && (
+                <div className="mb-3 rounded-2xl overflow-hidden border border-slate-200 dark:border-slate-700 bg-slate-950 shadow-xs">
+                  <div className="relative group">
+                    <img
+                      src={note.imageUrl}
+                      alt={note.title}
+                      className="w-full max-h-56 object-cover object-center"
+                    />
+                    <div className="absolute bottom-2 left-2 px-2 py-0.5 rounded-md bg-slate-900/80 backdrop-blur-xs text-[10px] text-white font-semibold">
+                      Attached Image / Architecture Diagram
+                    </div>
+                  </div>
+                </div>
+              )}
+
               <div className="text-xs sm:text-sm text-slate-700 dark:text-slate-200 leading-relaxed whitespace-pre-wrap font-sans bg-slate-50 dark:bg-slate-800/40 p-3.5 rounded-xl border border-slate-100 dark:border-slate-800">
                 {note.content}
               </div>
@@ -320,6 +336,20 @@ export const NoteDetailModal: React.FC<NoteDetailModalProps> = ({ note, onClose,
 
         {/* Footer actions */}
         <div className="p-4 border-t border-slate-100 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-900/50 flex items-center justify-between gap-3">
+          {onDeleteNote && (
+            <button
+              onClick={() => {
+                if (confirm(`Delete note "${note.title}"?`)) {
+                  onDeleteNote(note.id);
+                  onClose();
+                }
+              }}
+              className="py-2.5 px-3 rounded-xl border border-rose-200 dark:border-rose-900 text-rose-600 dark:text-rose-400 hover:bg-rose-50 dark:hover:bg-rose-950/40 text-xs font-semibold transition"
+              title="Delete Note"
+            >
+              Delete Note
+            </button>
+          )}
           <button
             onClick={() => onStartQuiz(note.title, note.content)}
             className="flex-1 py-2.5 px-4 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-bold transition flex items-center justify-center gap-1.5 shadow-sm"

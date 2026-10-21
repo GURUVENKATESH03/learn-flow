@@ -1,5 +1,11 @@
 import React, { useState } from 'react';
-import { BarChart3, TrendingUp, Clock, Calendar, Sparkles } from 'lucide-react';
+import { BarChart3, Sparkles } from 'lucide-react';
+import { Note, TaskItem } from '../../types';
+
+interface LearningActivityChartProps {
+  notes?: Note[];
+  tasks?: TaskItem[];
+}
 
 interface DayActivity {
   day: string;
@@ -9,35 +15,52 @@ interface DayActivity {
   topics: string[];
 }
 
-export const LearningActivityChart: React.FC = () => {
+export const LearningActivityChart: React.FC<LearningActivityChartProps> = ({
+  notes = [],
+  tasks = [],
+}) => {
   const [timeframe, setTimeframe] = useState<'this_week' | 'last_week'>('this_week');
-  const [selectedDayIndex, setSelectedDayIndex] = useState<number>(4); // Friday selected by default (peak day)
+  const [selectedDayIndex, setSelectedDayIndex] = useState<number>(0);
 
-  const thisWeekData: DayActivity[] = [
-    { day: 'Mon', fullDay: 'Monday', hours: 1.5, tasksCompleted: 2, topics: ['Kafka Architecture', 'Zookeeper vs KRaft'] },
-    { day: 'Tue', fullDay: 'Tuesday', hours: 1.0, tasksCompleted: 1, topics: ['Vue.js Composition API'] },
-    { day: 'Wed', fullDay: 'Wednesday', hours: 2.0, tasksCompleted: 3, topics: ['Spring Boot 3 Filters', 'SecurityContext'] },
-    { day: 'Thu', fullDay: 'Thursday', hours: 2.8, tasksCompleted: 4, topics: ['PostgreSQL B-Tree Indexing'] },
-    { day: 'Fri', fullDay: 'Friday', hours: 4.2, tasksCompleted: 6, topics: ['JWT Token Validation', 'Food Saver API'] },
-    { day: 'Sat', fullDay: 'Saturday', hours: 1.8, tasksCompleted: 2, topics: ['Docker multi-stage builds'] },
-    { day: 'Sun', fullDay: 'Sunday', hours: 2.2, tasksCompleted: 3, topics: ['Resume Analyzer NER model'] },
-  ];
+  const completedTasksCount = tasks.filter((t) => t.completed).length;
+  const notesCount = notes.length;
 
-  const lastWeekData: DayActivity[] = [
-    { day: 'Mon', fullDay: 'Monday', hours: 2.0, tasksCompleted: 3, topics: ['Java Stream API'] },
-    { day: 'Tue', fullDay: 'Tuesday', hours: 2.5, tasksCompleted: 3, topics: ['Spring Data JPA'] },
-    { day: 'Wed', fullDay: 'Wednesday', hours: 1.5, tasksCompleted: 2, topics: ['Flyway DB Migrations'] },
-    { day: 'Thu', fullDay: 'Thursday', hours: 3.0, tasksCompleted: 4, topics: ['REST API Exceptions'] },
-    { day: 'Fri', fullDay: 'Friday', hours: 3.5, tasksCompleted: 5, topics: ['Spring Security Architecture'] },
-    { day: 'Sat', fullDay: 'Saturday', hours: 2.0, tasksCompleted: 2, topics: ['DSA Trees & Graphs'] },
-    { day: 'Sun', fullDay: 'Sunday', hours: 1.2, tasksCompleted: 1, topics: ['System Design Basics'] },
-  ];
+  // Calculate dynamic activity from actual Firestore notes and completed tasks
+  const days = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
+  const fullDays = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'];
 
-  const data = timeframe === 'this_week' ? thisWeekData : lastWeekData;
-  const maxHours = 5; // Y-axis max
-  const activeDay = data[selectedDayIndex] || data[4];
+  const dynamicData: DayActivity[] = days.map((day, idx) => {
+    // If user has zero items, everything is cleanly 0
+    if (notesCount === 0 && completedTasksCount === 0) {
+      return {
+        day,
+        fullDay: fullDays[idx],
+        hours: 0,
+        tasksCompleted: 0,
+        topics: [],
+      };
+    }
+
+    // Spread actual user items across active days
+    const isToday = idx === new Date().getDay() - 1 || (new Date().getDay() === 0 && idx === 6);
+    const dayTasks = isToday ? completedTasksCount : 0;
+    const dayHours = Number(((notesCount * 0.4) + (dayTasks * 0.5)).toFixed(1));
+    const dayTopics = isToday ? notes.flatMap((n) => n.tags).slice(0, 3) : [];
+
+    return {
+      day,
+      fullDay: fullDays[idx],
+      hours: dayHours,
+      tasksCompleted: dayTasks,
+      topics: dayTopics,
+    };
+  });
+
+  const data = dynamicData;
+  const maxHours = Math.max(2, ...data.map((d) => d.hours));
+  const activeDay = data[selectedDayIndex] || data[0];
   const totalHours = data.reduce((sum, d) => sum + d.hours, 0).toFixed(1);
-  const avgHours = (Number(totalHours) / data.length).toFixed(1);
+  const avgHours = (Number(totalHours) / 7).toFixed(1);
 
   return (
     <div className="bg-white dark:bg-slate-800/80 rounded-3xl border border-slate-100 dark:border-slate-800 p-4 sm:p-5 shadow-2xs space-y-4">
@@ -66,20 +89,18 @@ export const LearningActivityChart: React.FC = () => {
 
       {/* Main Interactive Bar Chart with Y-Axis */}
       <div className="relative pt-4 pb-2">
-        <div className="flex items-end justify-between h-40 gap-2 px-1">
+        <div className="flex items-end justify-between h-36 gap-2 px-1">
           {/* Y-Axis scale labels */}
-          <div className="flex flex-col justify-between h-32 text-[10px] text-slate-400 font-mono pr-1 select-none">
-            <span>4h</span>
-            <span>3h</span>
-            <span>2h</span>
-            <span>1h</span>
+          <div className="flex flex-col justify-between h-28 text-[10px] text-slate-400 font-mono pr-1 select-none">
+            <span>{maxHours}h</span>
+            <span>{(maxHours / 2).toFixed(1)}h</span>
             <span>0h</span>
           </div>
 
           {/* Vertical Columns for Each Day */}
           {data.map((item, idx) => {
             const isSelected = selectedDayIndex === idx;
-            const barHeightPercent = Math.min(100, Math.max(8, (item.hours / maxHours) * 100));
+            const barHeightPercent = maxHours > 0 ? Math.min(100, Math.max(item.hours > 0 ? 12 : 4, (item.hours / maxHours) * 100)) : 4;
 
             return (
               <div
@@ -88,7 +109,7 @@ export const LearningActivityChart: React.FC = () => {
                 className="flex-1 flex flex-col items-center cursor-pointer group"
               >
                 {/* Bar Container */}
-                <div className="w-full flex items-end justify-center h-32 relative">
+                <div className="w-full flex items-end justify-center h-28 relative">
                   {/* Floating tooltip on selection */}
                   {isSelected && (
                     <div className="absolute -top-7 bg-indigo-900 text-white text-[10px] font-bold px-1.5 py-0.5 rounded-md shadow-md animate-in fade-in slide-in-from-bottom-1 z-10 whitespace-nowrap">
@@ -102,15 +123,18 @@ export const LearningActivityChart: React.FC = () => {
                     className={`w-full max-w-[28px] rounded-t-xl transition-all duration-300 relative ${
                       isSelected
                         ? 'bg-gradient-to-t from-indigo-600 to-indigo-500 shadow-md shadow-indigo-500/30 ring-2 ring-indigo-400/50'
-                        : 'bg-indigo-100 dark:bg-indigo-950/60 hover:bg-indigo-200 dark:hover:bg-indigo-900/60'
+                        : item.hours > 0
+                        ? 'bg-indigo-100 dark:bg-indigo-950/60 hover:bg-indigo-200 dark:hover:bg-indigo-900/60'
+                        : 'bg-slate-100 dark:bg-slate-800'
                     }`}
                   >
-                    {/* Subtle top indicator cap */}
-                    <div
-                      className={`w-full h-1.5 rounded-t-xl ${
-                        isSelected ? 'bg-indigo-300' : 'bg-indigo-200 dark:bg-indigo-800'
-                      }`}
-                    />
+                    {item.hours > 0 && (
+                      <div
+                        className={`w-full h-1.5 rounded-t-xl ${
+                          isSelected ? 'bg-indigo-300' : 'bg-indigo-200 dark:bg-indigo-800'
+                        }`}
+                      />
+                    )}
                   </div>
                 </div>
 
@@ -131,21 +155,21 @@ export const LearningActivityChart: React.FC = () => {
       </div>
 
       {/* Selected Day Inspector Panel */}
-      {activeDay && (
-        <div className="p-3 rounded-2xl bg-slate-50 dark:bg-slate-900/70 border border-slate-100 dark:border-slate-800/80 animate-in fade-in duration-150">
-          <div className="flex items-center justify-between mb-1.5">
-            <span className="text-xs font-bold text-slate-800 dark:text-slate-200">
-              {activeDay.fullDay} Focus
+      <div className="p-3 rounded-2xl bg-slate-50 dark:bg-slate-900/70 border border-slate-100 dark:border-slate-800/80 animate-in fade-in duration-150">
+        <div className="flex items-center justify-between mb-1.5">
+          <span className="text-xs font-bold text-slate-800 dark:text-slate-200">
+            {activeDay.fullDay} Activity
+          </span>
+          <div className="flex items-center gap-2">
+            <span className="px-2 py-0.5 rounded-md bg-indigo-50 dark:bg-indigo-950/60 text-indigo-600 dark:text-indigo-400 text-[10px] font-bold">
+              {activeDay.hours} hours logged
             </span>
-            <div className="flex items-center gap-2">
-              <span className="px-2 py-0.5 rounded-md bg-indigo-50 dark:bg-indigo-950/60 text-indigo-600 dark:text-indigo-400 text-[10px] font-bold">
-                {activeDay.hours} hours logged
-              </span>
-              <span className="px-2 py-0.5 rounded-md bg-emerald-50 dark:bg-emerald-950/60 text-emerald-600 dark:text-emerald-400 text-[10px] font-bold">
-                {activeDay.tasksCompleted} tasks done
-              </span>
-            </div>
+            <span className="px-2 py-0.5 rounded-md bg-emerald-50 dark:bg-emerald-950/60 text-emerald-600 dark:text-emerald-400 text-[10px] font-bold">
+              {activeDay.tasksCompleted} tasks done
+            </span>
           </div>
+        </div>
+        {activeDay.topics.length > 0 ? (
           <div className="flex flex-wrap gap-1.5 mt-1">
             {activeDay.topics.map((topic, i) => (
               <span
@@ -156,8 +180,12 @@ export const LearningActivityChart: React.FC = () => {
               </span>
             ))}
           </div>
-        </div>
-      )}
+        ) : (
+          <p className="text-[11px] text-slate-400 dark:text-slate-500">
+            No study sessions or topics logged for this day yet.
+          </p>
+        )}
+      </div>
     </div>
   );
 };

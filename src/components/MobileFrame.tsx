@@ -1,35 +1,78 @@
 import React, { useState } from 'react';
-import { Wifi, Battery, Smartphone, Maximize2, Minimize2, ZoomIn, ZoomOut, Moon, Sun, Sparkles } from 'lucide-react';
+import {
+  Wifi,
+  Battery,
+  Smartphone,
+  Maximize2,
+  Minimize2,
+  Moon,
+  Sun,
+  Sparkles,
+  QrCode,
+  Copy,
+  Check,
+  ExternalLink,
+  X,
+} from 'lucide-react';
 
 interface MobileFrameProps {
   children: React.ReactNode;
+  theme: 'light' | 'dark';
+  onToggleTheme: () => void;
   onQuickQuizTrigger?: () => void;
 }
 
-export const MobileFrame: React.FC<MobileFrameProps> = ({ children, onQuickQuizTrigger }) => {
+export const MobileFrame: React.FC<MobileFrameProps> = ({
+  children,
+  theme,
+  onToggleTheme,
+  onQuickQuizTrigger,
+}) => {
   const [isFullscreen, setIsFullscreen] = useState(false);
   const [scale, setScale] = useState<number>(1);
-  const [isDarkMode, setIsDarkMode] = useState(false);
+  const [showQrModal, setShowQrModal] = useState(false);
+  const [copiedUrl, setCopiedUrl] = useState(false);
 
   // Current formatted time (e.g., 9:41)
   const currentTime = '9:41';
+  const currentAppUrl = typeof window !== 'undefined' ? window.location.href : '';
+  const qrCodeUrl = `https://api.qrserver.com/v1/create-qr-code/?size=220x220&data=${encodeURIComponent(
+    currentAppUrl
+  )}`;
+
+  const handleCopyUrl = () => {
+    if (typeof navigator !== 'undefined') {
+      navigator.clipboard.writeText(currentAppUrl);
+      setCopiedUrl(true);
+      setTimeout(() => setCopiedUrl(false), 2000);
+    }
+  };
 
   return (
     <div
       className={`min-h-screen flex flex-col items-center justify-start sm:justify-center p-0 sm:p-4 transition-colors duration-300 ${
-        isDarkMode ? 'dark bg-slate-950 text-slate-100' : 'bg-slate-900 text-slate-800'
+        theme === 'dark' ? 'dark bg-slate-950 text-slate-100' : 'bg-slate-900 text-slate-800'
       }`}
     >
       {/* Outer Studio Controller Header (visible in desktop view) */}
       {!isFullscreen && (
-        <div className="w-full max-w-xl mx-auto mb-3 hidden sm:flex items-center justify-between px-3 py-2 rounded-2xl bg-slate-800/80 backdrop-blur-md border border-slate-700/60 text-slate-200 text-xs">
+        <div className="w-full max-w-xl mx-auto mb-3 hidden sm:flex items-center justify-between px-3.5 py-2 rounded-2xl bg-slate-800/90 backdrop-blur-md border border-slate-700/60 text-slate-200 text-xs shadow-lg">
           <div className="flex items-center gap-2">
             <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
             <span className="font-bold tracking-tight text-white">LearnFlow Mobile Simulator</span>
-            <span className="text-[10px] px-1.5 py-0.5 rounded-md bg-slate-700 text-slate-300">iPhone 16 Pro</span>
+            <span className="text-[10px] px-1.5 py-0.5 rounded-md bg-slate-700 text-slate-300 font-mono">iPhone 16 Pro</span>
           </div>
 
           <div className="flex items-center gap-2">
+            {/* Open on Phone button */}
+            <button
+              onClick={() => setShowQrModal(true)}
+              className="px-2.5 py-1 rounded-lg bg-emerald-600 hover:bg-emerald-500 text-white font-semibold text-[11px] flex items-center gap-1.5 transition shadow-xs"
+              title="Open or Scan on Real Phone"
+            >
+              <QrCode className="w-3.5 h-3.5" /> Open on Phone
+            </button>
+
             {/* Quick Trigger button */}
             {onQuickQuizTrigger && (
               <button
@@ -57,13 +100,23 @@ export const MobileFrame: React.FC<MobileFrameProps> = ({ children, onQuickQuizT
               </button>
             </div>
 
-            {/* Dark Mode toggle */}
+            {/* Dark/Light Mode toggle */}
             <button
-              onClick={() => setIsDarkMode(!isDarkMode)}
-              className="p-1 rounded-lg hover:bg-slate-700 text-slate-300 transition"
-              title="Toggle theme"
+              onClick={onToggleTheme}
+              className="p-1.5 rounded-lg hover:bg-slate-700 text-slate-300 transition flex items-center gap-1 text-[11px] font-semibold"
+              title={theme === 'dark' ? 'Switch to Light Theme' : 'Switch to Dark Theme'}
             >
-              {isDarkMode ? <Sun className="w-4 h-4 text-amber-400" /> : <Moon className="w-4 h-4" />}
+              {theme === 'dark' ? (
+                <>
+                  <Sun className="w-4 h-4 text-amber-400" />
+                  <span>Light</span>
+                </>
+              ) : (
+                <>
+                  <Moon className="w-4 h-4 text-indigo-300" />
+                  <span>Dark</span>
+                </>
+              )}
             </button>
 
             {/* Fullscreen toggle */}
@@ -82,11 +135,80 @@ export const MobileFrame: React.FC<MobileFrameProps> = ({ children, onQuickQuizT
       {isFullscreen && (
         <button
           onClick={() => setIsFullscreen(false)}
-          className="fixed top-3 right-3 z-50 p-2 rounded-xl bg-slate-800/80 text-white backdrop-blur-md border border-slate-700 shadow-lg hover:bg-slate-700 transition"
+          className="fixed top-3 right-3 z-50 p-2 rounded-xl bg-slate-800/80 text-white backdrop-blur-md border border-slate-700 shadow-lg hover:bg-slate-700 transition flex items-center gap-1.5 text-xs font-semibold"
           title="Exit Fullscreen"
         >
           <Minimize2 className="w-4 h-4" />
+          <span>Exit Frame</span>
         </button>
+      )}
+
+      {/* QR Code / Mobile Export Modal */}
+      {showQrModal && (
+        <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-xs flex items-center justify-center p-4">
+          <div className="bg-white dark:bg-slate-900 w-full max-w-sm rounded-3xl p-5 border border-slate-200 dark:border-slate-800 shadow-2xl space-y-4 text-center">
+            <div className="flex items-center justify-between pb-2 border-b border-slate-100 dark:border-slate-800">
+              <div className="flex items-center gap-2 text-left">
+                <Smartphone className="w-5 h-5 text-indigo-600 dark:text-indigo-400" />
+                <div>
+                  <h3 className="text-sm font-bold text-slate-900 dark:text-white">
+                    Open on Your Phone
+                  </h3>
+                  <p className="text-[11px] text-slate-400">Scan or copy the link</p>
+                </div>
+              </div>
+              <button
+                onClick={() => setShowQrModal(false)}
+                className="p-1 rounded-full text-slate-400 hover:text-slate-600"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+
+            {/* QR Code Image */}
+            <div className="p-3 bg-white rounded-2xl border border-slate-200 dark:border-slate-700 inline-block shadow-sm">
+              <img
+                src={qrCodeUrl}
+                alt="Scan with phone"
+                className="w-44 h-44 mx-auto rounded-lg"
+              />
+            </div>
+
+            <div className="space-y-2 text-left text-xs text-slate-600 dark:text-slate-300">
+              <div className="flex items-center gap-2 p-2 rounded-xl bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700">
+                <span className="w-5 h-5 rounded-full bg-indigo-100 dark:bg-indigo-900/60 text-indigo-600 dark:text-indigo-400 flex items-center justify-center font-bold text-[10px] shrink-0">
+                  1
+                </span>
+                <span className="text-[11px]">Scan QR code with your phone camera or browser.</span>
+              </div>
+              <div className="flex items-center gap-2 p-2 rounded-xl bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700">
+                <span className="w-5 h-5 rounded-full bg-indigo-100 dark:bg-indigo-900/60 text-indigo-600 dark:text-indigo-400 flex items-center justify-center font-bold text-[10px] shrink-0">
+                  2
+                </span>
+                <span className="text-[11px]">
+                  In Safari or Chrome, tap <strong>Share → Add to Home Screen</strong> to install like a native app.
+                </span>
+              </div>
+            </div>
+
+            {/* Copy Link Button */}
+            <div className="pt-1 flex gap-2">
+              <button
+                onClick={handleCopyUrl}
+                className="flex-1 py-2.5 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-bold transition flex items-center justify-center gap-1.5 shadow-sm"
+              >
+                {copiedUrl ? <Check className="w-3.5 h-3.5 text-emerald-300" /> : <Copy className="w-3.5 h-3.5" />}
+                {copiedUrl ? 'Copied Link!' : 'Copy Mobile URL'}
+              </button>
+              <button
+                onClick={() => setShowQrModal(false)}
+                className="py-2.5 px-4 rounded-xl bg-slate-100 dark:bg-slate-800 text-xs font-semibold text-slate-600 dark:text-slate-300"
+              >
+                Close
+              </button>
+            </div>
+          </div>
+        </div>
       )}
 
       {/* Device Wrapper */}
@@ -103,9 +225,9 @@ export const MobileFrame: React.FC<MobileFrameProps> = ({ children, onQuickQuizT
       >
         {/* Phone Inner Display Container */}
         <div
-          className={`w-full h-full bg-slate-50 dark:bg-slate-900 overflow-hidden flex flex-col relative ${
-            isFullscreen ? 'rounded-none' : 'rounded-[42px]'
-          }`}
+          className={`w-full h-full bg-slate-50 dark:bg-slate-900 overflow-hidden flex flex-col relative transition-colors duration-200 ${
+            theme === 'dark' ? 'dark' : ''
+          } ${isFullscreen ? 'rounded-none' : 'rounded-[42px]'}`}
         >
           {/* iOS Top Status Bar */}
           <div className="w-full pt-3 px-6 pb-1 flex items-center justify-between text-slate-900 dark:text-white shrink-0 select-none z-30">
