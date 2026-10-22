@@ -3,7 +3,7 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { onAuthStateChanged, User as FirebaseUser } from 'firebase/auth';
 import { Header } from './components/Header';
 import { Navigation, TabType } from './components/Navigation';
@@ -45,171 +45,7 @@ import {
 import { Note, TaskItem, Project, Roadmap, Quiz, UserProfile } from './types';
 import confetti from 'canvas-confetti';
 import { BookOpen, Loader2 } from 'lucide-react';
-
-// Starter data for Guest / Instant Demo mode
-const initialGuestNotes: Note[] = [
-  {
-    id: 'n1',
-    title: 'Clean Architecture in Spring Boot 3.3',
-    content:
-      'Domain-centric layers ensure decoupling of business logic from framework details. Core domain entities remain framework-agnostic while adapters interface with persistence and web delivery.',
-    summary:
-      'Core domain isolation, port/adapter patterns, and testability in modern microservices.',
-    tags: ['Architecture', 'Spring Boot', 'Java'],
-    createdAt: new Date().toISOString(),
-    updatedAt: new Date().toISOString(),
-    timeAgo: '2h ago',
-    color: 'teal',
-    mindMapNodes: [
-      { id: '1', label: 'Domain Core', type: 'root' },
-      { id: '2', label: 'Use Cases & Ports', type: 'concept' },
-      { id: '3', label: 'Adapters & Infrastructure', type: 'practice' },
-    ],
-  },
-  {
-    id: 'n2',
-    title: 'Java 21 Virtual Threads & Loom Concurrency',
-    content:
-      'Virtual threads are lightweight threads managed by the JVM rather than the OS kernel. They drastically reduce the memory footprint of high-throughput I/O bound web applications.',
-    summary:
-      'JVM-managed lightweight threads enabling 10k+ concurrent requests with standard imperative code.',
-    tags: ['Java 21', 'Concurrency', 'Performance'],
-    createdAt: new Date().toISOString(),
-    updatedAt: new Date().toISOString(),
-    timeAgo: '1d ago',
-    color: 'indigo',
-    mindMapNodes: [
-      { id: '1', label: 'Virtual Threads', type: 'root' },
-      { id: '2', label: 'Carrier Threads', type: 'concept' },
-      { id: '3', label: 'Unpinned I/O', type: 'practice' },
-    ],
-  },
-  {
-    id: 'n3',
-    title: 'Event-Driven Architectures with Kafka',
-    content:
-      'Partitioning strategies, consumer group offsets, idempotent producers, and dead-letter topics for mission-critical microservice events.',
-    summary:
-      'Reliable distributed event streaming, offset management, and at-least-once delivery guarantees.',
-    tags: ['Kafka', 'Microservices', 'Distributed'],
-    createdAt: new Date().toISOString(),
-    updatedAt: new Date().toISOString(),
-    timeAgo: '3d ago',
-    color: 'amber',
-  },
-];
-
-const initialGuestTasks: TaskItem[] = [
-  { id: 't1', text: 'Benchmark Virtual Threads with 10k concurrent requests', completed: true },
-  { id: 't2', text: 'Implement GitHub OAuth & Repo Webhook synchronization', completed: true },
-  { id: 't3', text: 'Design resilient Circuit Breaker with Resilience4j', completed: false },
-  { id: 't4', text: 'Review Spring Security 6.3 JWT Filter Chain', completed: false },
-];
-
-const initialGuestProjects: Project[] = [
-  {
-    id: 'p1',
-    title: 'LearnFlow Web & Mobile Hub',
-    description:
-      'AI-assisted developer learning platform with GitHub sync, interactive concept mind-maps, and automated roadmaps.',
-    progress: 85,
-    tags: ['React', 'TypeScript', 'Tailwind', 'Express'],
-    repoUrl: 'https://github.com/learnflow/core',
-    iconBg: 'indigo',
-    iconColor: 'indigo',
-    visibility: 'public',
-    stars: 28,
-    forks: 7,
-    isGitHubSynced: true,
-    githubOwner: 'learnflow',
-    githubRepo: 'core',
-    defaultBranch: 'main',
-    lastSyncedAt: new Date().toISOString(),
-    commits: [
-      {
-        id: 'c1',
-        hash: '2afb7fe',
-        message: 'feat: complete LearnFlow smart learning app with GitHub sync, commits, and PRs',
-        author: 'Developer',
-        timeAgo: '10m ago',
-        branch: 'main',
-      },
-      {
-        id: 'c2',
-        hash: '7c8a901',
-        message: 'feat: add interactive concept mind-mapping and dynamic quizzes',
-        author: 'Developer',
-        timeAgo: '2h ago',
-        branch: 'main',
-      },
-    ],
-    pullRequests: [
-      {
-        id: 101,
-        number: 14,
-        title: 'Enhance desktop responsive layout & add instant guest access',
-        state: 'open',
-        author: 'developer',
-        createdAt: new Date().toISOString(),
-        timeAgo: '15m ago',
-        htmlUrl: '#',
-      },
-    ],
-    tasks: [
-      { id: 'pt1', text: 'Responsive laptop & desktop viewport layout', done: true },
-      { id: 'pt2', text: 'Deploy to Vercel with SPA routing rewrite', done: true },
-      { id: 'pt3', text: 'Connect GitHub repository for live branch commits', done: true },
-    ],
-    status: 'Active',
-  },
-];
-
-const initialGuestRoadmap: Roadmap = {
-  id: 'rm-1',
-  title: 'Full Stack & Distributed Systems Mastery',
-  roleTrack: 'Software Engineer',
-  currentWeek: 3,
-  totalWeeks: 12,
-  overallProgress: 45,
-  milestones: [
-    {
-      phase: 'Phase 1',
-      title: 'Spring Boot 3 & Core Microservices Architecture',
-      weeks: 'Weeks 1-3',
-      status: 'In Progress',
-      progress: 75,
-      tasks: [
-        'Domain-Driven Design (DDD) & Clean Architecture',
-        'Spring Security 6 with Stateless JWT Authentication',
-        'Virtual Threads & High Throughput Benchmarking',
-      ],
-    },
-    {
-      phase: 'Phase 2',
-      title: 'Distributed Messaging & Event Streaming',
-      weeks: 'Weeks 4-6',
-      status: 'Upcoming',
-      progress: 20,
-      tasks: [
-        'Apache Kafka Producer Idempotence & Consumer Groups',
-        'Saga Pattern for Distributed Transaction Consistency',
-        'Dead-Letter Queues & Resilient Retry Strategies',
-      ],
-    },
-    {
-      phase: 'Phase 3',
-      title: 'Cloud Native Deployment & Observability',
-      weeks: 'Weeks 7-10',
-      status: 'Upcoming',
-      progress: 0,
-      tasks: [
-        'Docker Multi-Stage Builds & Kubernetes Pod Scheduling',
-        'Distributed Tracing with OpenTelemetry & Grafana',
-        'CI/CD Pipeline with Automated Smoke Testing',
-      ],
-    },
-  ],
-};
+import { Toast, ToastMessage } from './components/common/Toast';
 
 export default function App() {
   const [currentUser, setCurrentUser] = useState<FirebaseUser | null>(null);
@@ -219,23 +55,37 @@ export default function App() {
   });
   const [isAuthChecking, setIsAuthChecking] = useState<boolean>(true);
 
+  const [toast, setToast] = useState<ToastMessage | null>(null);
+
+  const showToast = (
+    message: string,
+    type: 'success' | 'error' | 'info' = 'success',
+    title?: string
+  ) => {
+    setToast({
+      id: `toast-${Date.now()}`,
+      type,
+      message,
+      title: title || (type === 'success' ? 'Success' : type === 'error' ? 'Notice' : 'Information'),
+    });
+  };
+
   const [theme, setTheme] = useState<'light' | 'dark'>(() => {
     return (localStorage.getItem('learnflow_theme') as 'light' | 'dark') || 'light';
   });
 
-  // Live database states
+  // Zero-hardcoding live states with local backup for guest mode
   const [notes, setNotes] = useState<Note[]>(() => {
-    return isGuestMode ? initialGuestNotes : [];
+    try {
+      const cached = localStorage.getItem('learnflow_cached_notes');
+      return cached ? JSON.parse(cached) : [];
+    } catch {
+      return [];
+    }
   });
-  const [tasks, setTasks] = useState<TaskItem[]>(() => {
-    return isGuestMode ? initialGuestTasks : [];
-  });
-  const [projects, setProjects] = useState<Project[]>(() => {
-    return isGuestMode ? initialGuestProjects : [];
-  });
-  const [roadmap, setRoadmap] = useState<Roadmap | null>(() => {
-    return isGuestMode ? initialGuestRoadmap : null;
-  });
+  const [tasks, setTasks] = useState<TaskItem[]>([]);
+  const [projects, setProjects] = useState<Project[]>([]);
+  const [roadmap, setRoadmap] = useState<Roadmap | null>(null);
 
   const [activeTab, setActiveTab] = useState<TabType>('home');
   const [selectedNote, setSelectedNote] = useState<Note | null>(null);
@@ -270,6 +120,10 @@ export default function App() {
       if (!firebaseUser) {
         if (!isGuestMode) {
           setUserProfile(null);
+          setNotes([]);
+          setTasks([]);
+          setProjects([]);
+          setRoadmap(null);
         }
         setIsAuthChecking(false);
       }
@@ -278,7 +132,7 @@ export default function App() {
     return () => unsubscribeAuth();
   }, [isGuestMode]);
 
-  // Subscribe to live Firestore collections for the authenticated user
+  // Subscribe to live Firestore collections strictly scoped to authenticated user ID
   useEffect(() => {
     if (!currentUser) return;
 
@@ -324,16 +178,10 @@ export default function App() {
     setIsGuestMode(true);
     localStorage.setItem('learnflow_guest_mode', 'true');
     setIsAuthChecking(false);
-
-    if (notes.length === 0) setNotes(initialGuestNotes);
-    if (tasks.length === 0) setTasks(initialGuestTasks);
-    if (projects.length === 0) setProjects(initialGuestProjects);
-    if (!roadmap) setRoadmap(initialGuestRoadmap);
-
-    confetti({ particleCount: 50, spread: 60 });
+    confetti({ particleCount: 40, spread: 50 });
   };
 
-  // Sign out
+  // Sign out cleanly - clear in-memory state so nothing leaks between sessions
   const handleLogout = async () => {
     try {
       if (currentUser) {
@@ -352,7 +200,7 @@ export default function App() {
     }
   };
 
-  // Reset database / clear state
+  // Reset database / clear all state
   const handleResetDatabase = async () => {
     if (currentUser) {
       try {
@@ -361,6 +209,9 @@ export default function App() {
         console.error('Reset database error:', err);
       }
     }
+    try {
+      localStorage.removeItem('learnflow_cached_notes');
+    } catch (e) {}
     setNotes([]);
     setTasks([]);
     setProjects([]);
@@ -376,53 +227,95 @@ export default function App() {
           }
         : null
     );
+    showToast('Workspace reset to fresh clean start (0 notes, 0 projects).', 'info', 'Workspace Reset');
   };
 
   // Note Handlers
   const handleSaveNote = async (newNoteData: Partial<Note>) => {
-    const defaultTags = ['Engineering', 'Architecture'];
+    const rawTitle = newNoteData.title?.trim() || '';
+    const rawContent = newNoteData.content?.trim() || '';
+
+    if (!rawTitle && !rawContent) {
+      showToast('Please enter a note title or note content before saving.', 'error', 'Note Empty');
+      return;
+    }
+
+    const defaultTags = ['General'];
     const now = new Date().toISOString();
     const noteId = newNoteData.id || `note-${Date.now()}`;
     const fullNote: Note = {
       id: noteId,
-      title: newNoteData.title || 'Untitled Note',
-      content: newNoteData.content || '',
+      title: rawTitle || 'Untitled Note',
+      content: rawContent,
       summary:
-        (newNoteData.content || '').slice(0, 150) +
-        ((newNoteData.content || '').length > 150 ? '...' : ''),
-      imageUrl: newNoteData.imageUrl,
+        rawContent.slice(0, 150) +
+        (rawContent.length > 150 ? '...' : ''),
+      imageUrl: newNoteData.imageUrl || undefined,
       tags: newNoteData.tags && newNoteData.tags.length > 0 ? newNoteData.tags : defaultTags,
       timeAgo: 'Just now',
       color: (newNoteData.color as any) || 'teal',
-      mindMapNodes: newNoteData.mindMapNodes,
+      mindMapNodes:
+        newNoteData.mindMapNodes && newNoteData.mindMapNodes.length > 0
+          ? newNoteData.mindMapNodes
+          : [
+              { id: '1', label: rawTitle || 'Note', type: 'root' },
+              { id: '2', label: 'Key Insights', type: 'concept' },
+            ],
       createdAt: now,
       updatedAt: now,
     };
 
+    // 1. Update state immediately so the new note is visible right away
+    setNotes((prev) => {
+      const updated = [fullNote, ...prev.filter((n) => n.id !== noteId)];
+      try {
+        localStorage.setItem('learnflow_cached_notes', JSON.stringify(updated));
+      } catch (e) {}
+      return updated;
+    });
+
+    // 2. Close the modal
+    setShowNewNoteModal(false);
+
+    // 3. Persist to Firestore if user is authenticated with Firebase
+    let firestoreError = false;
     if (currentUser) {
       try {
         await addFirestoreNote(currentUser.uid, fullNote);
       } catch (err) {
-        console.error('Error adding firestore note:', err);
+        console.error('Error adding note to Firestore:', err);
+        firestoreError = true;
       }
-    } else {
-      setNotes((prev) => [fullNote, ...prev]);
     }
+
+    if (firestoreError) {
+      showToast(`Note "${fullNote.title}" saved locally. Cloud sync pending.`, 'info', 'Saved Locally');
+    } else {
+      showToast(`Smart note "${fullNote.title}" saved successfully!`, 'success', 'Saved to Notes');
+    }
+
+    confetti({ particleCount: 35, spread: 50, origin: { y: 0.8 } });
   };
 
   const handleDeleteNote = async (noteId: string) => {
+    setNotes((prev) => {
+      const updated = prev.filter((n) => n.id !== noteId);
+      try {
+        localStorage.setItem('learnflow_cached_notes', JSON.stringify(updated));
+      } catch (e) {}
+      return updated;
+    });
     if (currentUser) {
       try {
         await deleteFirestoreNote(currentUser.uid, noteId);
       } catch (err) {
         console.error('Error deleting firestore note:', err);
       }
-    } else {
-      setNotes((prev) => prev.filter((n) => n.id !== noteId));
     }
     if (selectedNote?.id === noteId) {
       setSelectedNote(null);
     }
+    showToast('Note deleted.', 'info', 'Removed');
   };
 
   // Task Handlers
@@ -430,46 +323,50 @@ export default function App() {
     const task = tasks.find((t) => t.id === taskId);
     if (!task) return;
 
+    setTasks((prev) =>
+      prev.map((t) => (t.id === taskId ? { ...t, completed: !t.completed } : t))
+    );
+
     if (currentUser) {
       try {
         await toggleFirestoreTask(currentUser.uid, taskId, task.completed);
       } catch (err) {
         console.error('Error toggling firestore task:', err);
       }
-    } else {
-      setTasks((prev) =>
-        prev.map((t) => (t.id === taskId ? { ...t, completed: !t.completed } : t))
-      );
     }
   };
 
   const handleAddTask = async (text: string) => {
+    if (!text.trim()) {
+      showToast('Please type a task or goal description.', 'error', 'Empty Goal');
+      return;
+    }
     const newTask: TaskItem = {
       id: `task-${Date.now()}`,
-      text,
+      text: text.trim(),
       completed: false,
       category: 'General',
     };
+    setTasks((prev) => [newTask, ...prev]);
+
     if (currentUser) {
       try {
         await addFirestoreTask(currentUser.uid, newTask);
       } catch (err) {
         console.error('Error adding firestore task:', err);
       }
-    } else {
-      setTasks((prev) => [newTask, ...prev]);
     }
+    showToast(`Added goal: "${text.trim()}"`, 'success', 'Goal Added');
   };
 
   const handleDeleteTask = async (taskId: string) => {
+    setTasks((prev) => prev.filter((t) => t.id !== taskId));
     if (currentUser) {
       try {
         await deleteFirestoreTask(currentUser.uid, taskId);
       } catch (err) {
         console.error('Error deleting firestore task:', err);
       }
-    } else {
-      setTasks((prev) => prev.filter((t) => t.id !== taskId));
     }
   };
 
@@ -480,7 +377,7 @@ export default function App() {
       title: newProj.title || 'New Repository',
       description: newProj.description || 'Project managed in LearnFlow',
       progress: newProj.progress || 0,
-      tags: newProj.tags || ['Java', 'Spring'],
+      tags: newProj.tags || ['General'],
       repoUrl: newProj.repoUrl || '#',
       iconBg: newProj.iconBg || 'indigo',
       iconColor: newProj.iconColor || 'indigo',
@@ -498,56 +395,55 @@ export default function App() {
       status: newProj.status || 'Active',
     };
 
+    setProjects((prev) => [fullProject, ...prev]);
+
     if (currentUser) {
       try {
         await addFirestoreProject(currentUser.uid, fullProject);
       } catch (err) {
         console.error('Error adding firestore project:', err);
       }
-    } else {
-      setProjects((prev) => [fullProject, ...prev]);
     }
   };
 
   const handleUpdateProject = async (projectId: string, data: Partial<Project>) => {
+    setProjects((prev) =>
+      prev.map((p) => (p.id === projectId ? { ...p, ...data } : p))
+    );
+
     if (currentUser) {
       try {
         await updateFirestoreProject(currentUser.uid, projectId, data);
       } catch (err) {
         console.error('Error updating firestore project:', err);
       }
-    } else {
-      setProjects((prev) =>
-        prev.map((p) => (p.id === projectId ? { ...p, ...data } : p))
-      );
     }
   };
 
   const handleDeleteProject = async (projectId: string) => {
+    setProjects((prev) => prev.filter((p) => p.id !== projectId));
     if (currentUser) {
       try {
         await deleteFirestoreProject(currentUser.uid, projectId);
       } catch (err) {
         console.error('Error deleting firestore project:', err);
       }
-    } else {
-      setProjects((prev) => prev.filter((p) => p.id !== projectId));
     }
   };
 
   const handleBatchAddProjects = async (newProjects: Project[]) => {
+    setProjects((prev) => {
+      const existingIds = new Set(prev.map((p) => p.id));
+      const filteredNew = newProjects.filter((p) => !existingIds.has(p.id));
+      return [...filteredNew, ...prev];
+    });
+
     if (currentUser) {
       try {
         await batchSaveFirestoreProjects(currentUser.uid, newProjects);
       } catch (err) {
         console.error('Error batch adding firestore projects:', err);
       }
-    } else {
-      setProjects((prev) => {
-        const existingIds = new Set(prev.map((p) => p.id));
-        const filteredNew = newProjects.filter((p) => !existingIds.has(p.id));
-        return [...filteredNew, ...prev];
-      });
     }
   };
 
@@ -566,6 +462,7 @@ export default function App() {
   };
 
   const handleUpdateUserProfile = async (updates: Partial<UserProfile>) => {
+    setUserProfile((prev) => (prev ? { ...prev, ...updates } : null));
     if (currentUser) {
       try {
         await updateUserProfile(currentUser.uid, updates);
@@ -573,11 +470,11 @@ export default function App() {
         console.error('Error updating user profile:', err);
       }
     }
-    setUserProfile((prev) => (prev ? { ...prev, ...updates } : null));
   };
 
   // Roadmap Handler
   const handleUpdateRoadmap = async (newRoadmap: Roadmap) => {
+    setRoadmap(newRoadmap);
     if (currentUser) {
       try {
         await saveFirestoreRoadmap(currentUser.uid, newRoadmap);
@@ -585,7 +482,7 @@ export default function App() {
         console.error('Error saving firestore roadmap:', err);
       }
     }
-    setRoadmap(newRoadmap);
+    showToast(`Roadmap "${newRoadmap.title}" active and tracked!`, 'success', 'Roadmap Saved');
   };
 
   // Lesson & Quiz Handlers
@@ -595,11 +492,11 @@ export default function App() {
   };
 
   const handleStartQuiz = (topic: string, content?: string) => {
-    const quizTitle = topic || 'Distributed Systems & Clean Architecture';
+    const quizTitle = topic || 'General Engineering Knowledge';
     const sampleQuestions = [
       {
         id: 'q1',
-        question: `In Clean Architecture, which layer contains the enterprise business rules?`,
+        question: `In Clean Architecture, which layer contains the core enterprise business logic?`,
         options: [
           'The Web / Controller Adapter Layer',
           'The Domain Entities Core Layer',
@@ -608,20 +505,20 @@ export default function App() {
         ],
         correctIndex: 1,
         explanation:
-          'In Clean Architecture, Enterprise Business Rules are encapsulated inside the innermost Domain Entities core layer, which has zero dependencies on external frameworks.',
+          'In Clean Architecture, Enterprise Business Rules are encapsulated inside the innermost Domain Entities layer with zero dependencies on frameworks.',
       },
       {
         id: 'q2',
-        question: `How do Java 21 Virtual Threads differ from traditional platform threads?`,
+        question: `What is the primary benefit of decoupling business logic from databases?`,
         options: [
-          'They bypass JVM memory limits by writing directly to disk',
-          'They are mapped 1:1 directly to OS kernel threads',
-          'They are scheduled by the JVM on a carrier pool, unpinning on blocking I/O',
-          'They require reactive Mono/Flux abstractions to execute asynchronously',
+          'Allows business rules to be tested independently of persistence details',
+          'Eliminates the need for indexing tables',
+          'Increases memory usage on the backend server',
+          'Disables transactions across tables',
         ],
-        correctIndex: 2,
+        correctIndex: 0,
         explanation:
-          'Virtual Threads are managed directly by the JVM runtime and multiplexed onto a small pool of carrier OS platform threads, suspending without blocking kernel threads.',
+          'Decoupling allows business logic to be tested thoroughly with unit tests without needing mock databases or live connections.',
       },
     ];
 
@@ -631,27 +528,117 @@ export default function App() {
     });
   };
 
+  // Compute streak cleanly based on actual completed tasks
+  const completedGoalsCount = tasks.filter((t) => t.completed).length;
+  const computedStreak = completedGoalsCount > 0 ? Math.min(completedGoalsCount, 7) : 0;
+
   const effectiveUser: UserProfile = userProfile || {
-    name: currentUser?.displayName || 'Prakash (Developer)',
+    name: currentUser?.displayName || 'Learner',
     role: 'Software Developer',
-    email: currentUser?.email || 'prakashgvp.dev03@gmail.com',
+    email: currentUser?.email || 'learner@learnflow.app',
     avatarUrl:
       currentUser?.photoURL ||
       'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=150&auto=format&fit=crop&q=80',
-    streak: isGuestMode ? 5 : 0,
+    streak: computedStreak,
     totalNotes: notes.length,
     totalProjects: projects.length,
     weeklyGoals: {
-      completed: tasks.filter((t) => t.completed).length,
+      completed: completedGoalsCount,
       total: tasks.length,
     },
     googleId: currentUser?.uid,
     isGoogleConnected: Boolean(currentUser),
-    githubUsername: 'prakash-dev',
-    githubConnected: true,
+    githubConnected: false,
   };
 
   const isAuthenticated = Boolean(currentUser || isGuestMode);
+
+  // Mobile Gesture Navigation:
+  // Swiping right advances forward (e.g. Dashboard/Home -> Notes),
+  // Swiping left returns backward (e.g. Notes -> Dashboard/Home)
+  const touchStartRef = useRef<{ x: number; y: number; time: number } | null>(null);
+
+  const handleTouchStart = (e: React.TouchEvent) => {
+    if (e.touches.length !== 1) return;
+    touchStartRef.current = {
+      x: e.touches[0].clientX,
+      y: e.touches[0].clientY,
+      time: Date.now(),
+    };
+  };
+
+  const handleTouchEnd = (e: React.TouchEvent) => {
+    if (!touchStartRef.current || e.changedTouches.length !== 1) return;
+
+    // Do not trigger swipe navigation when modals are active
+    if (selectedNote || showLessonModal || showNewNoteModal || activeQuiz) {
+      touchStartRef.current = null;
+      return;
+    }
+
+    // Ignore touches on interactive form elements or canvases
+    const target = e.target as HTMLElement;
+    if (
+      target.closest('input, textarea, select, canvas, button, [data-no-swipe="true"]')
+    ) {
+      touchStartRef.current = null;
+      return;
+    }
+
+    const touchEnd = e.changedTouches[0];
+    const deltaX = touchEnd.clientX - touchStartRef.current.x;
+    const deltaY = touchEnd.clientY - touchStartRef.current.y;
+    const deltaTime = Date.now() - touchStartRef.current.time;
+
+    touchStartRef.current = null;
+
+    // Minimum swipe threshold: 45px with horizontal dominance over vertical scroll, under 700ms
+    if (Math.abs(deltaX) > 45 && Math.abs(deltaX) > Math.abs(deltaY) * 1.25 && deltaTime < 700) {
+      const tabOrder: TabType[] = ['home', 'notes', 'projects', 'roadmap', 'ai'];
+      const currentIndex = tabOrder.indexOf(activeTab);
+
+      if (deltaX > 0) {
+        // SWIPE RIGHT: (e.g., from Dashboard -> Notes)
+        if (activeTab === 'home') {
+          setActiveTab('notes');
+        } else if (currentIndex < tabOrder.length - 1) {
+          setActiveTab(tabOrder[currentIndex + 1]);
+        }
+      } else {
+        // SWIPE LEFT: (e.g., from Notes -> Dashboard)
+        if (activeTab === 'notes') {
+          setActiveTab('home');
+        } else if (activeTab === 'home') {
+          setActiveTab('notes');
+        } else if (currentIndex > 0) {
+          setActiveTab(tabOrder[currentIndex - 1]);
+        }
+      }
+    }
+  };
+
+  // Keyboard arrow navigation fallback (Left / Right arrow)
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (selectedNote || showLessonModal || showNewNoteModal || activeQuiz) return;
+      const target = e.target as HTMLElement;
+      if (target.closest('input, textarea, select')) return;
+
+      const tabOrder: TabType[] = ['home', 'notes', 'projects', 'roadmap', 'ai'];
+      const currentIndex = tabOrder.indexOf(activeTab);
+
+      if (e.key === 'ArrowRight') {
+        if (activeTab === 'home') setActiveTab('notes');
+        else if (currentIndex < tabOrder.length - 1) setActiveTab(tabOrder[currentIndex + 1]);
+      } else if (e.key === 'ArrowLeft') {
+        if (activeTab === 'notes') setActiveTab('home');
+        else if (currentIndex > 0) setActiveTab(tabOrder[currentIndex - 1]);
+      }
+    };
+
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [activeTab, selectedNote, showLessonModal, showNewNoteModal, activeQuiz]);
 
   return (
     <div
@@ -659,6 +646,9 @@ export default function App() {
         theme === 'dark' ? 'dark bg-slate-950 text-slate-100' : 'bg-slate-50 text-slate-900'
       }`}
     >
+      {/* Global floating Toast notification container */}
+      <Toast toast={toast} onClose={() => setToast(null)} />
+
       {isAuthChecking ? (
         <div className="min-h-screen flex flex-col items-center justify-center p-6 bg-slate-50 dark:bg-slate-950 text-slate-800 dark:text-slate-100">
           <div className="w-16 h-16 rounded-3xl bg-indigo-600 flex items-center justify-center text-white shadow-xl shadow-indigo-500/25 mb-4 animate-bounce">
@@ -682,8 +672,12 @@ export default function App() {
             onChangeTab={(tab) => setActiveTab(tab)}
           />
 
-          {/* Main App Content Container (Responsive max-w-7xl on desktop, full-width on mobile) */}
-          <main className="flex-1 w-full max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4 sm:py-6 pb-24 md:pb-12">
+          {/* Main App Content Container with Mobile Horizontal Swipe Gesture Detection */}
+          <main
+            onTouchStart={handleTouchStart}
+            onTouchEnd={handleTouchEnd}
+            className="flex-1 w-full max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4 sm:py-6 pb-24 md:pb-12 touch-pan-y"
+          >
             {activeTab === 'home' && (
               <HomeScreen
                 user={effectiveUser}
@@ -728,6 +722,7 @@ export default function App() {
               <RoadmapScreen
                 roadmap={roadmap as Roadmap}
                 onUpdateRoadmap={handleUpdateRoadmap}
+                onShowToast={showToast}
               />
             )}
 
@@ -778,6 +773,7 @@ export default function App() {
             <NewNoteModal
               onClose={() => setShowNewNoteModal(false)}
               onSave={handleSaveNote}
+              onError={(msg) => showToast(msg, 'error', 'Validation Notice')}
             />
           )}
         </div>

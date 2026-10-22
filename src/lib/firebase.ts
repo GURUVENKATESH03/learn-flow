@@ -313,15 +313,32 @@ export function subscribeToRoadmaps(
 
 // Database Mutation Operations (Live Firestore Writes)
 
+// Helper to strip undefined values so Firestore does not throw Unsupported field value: undefined
+function sanitizeForFirestore<T extends Record<string, any>>(obj: T): Record<string, any> {
+  const result: Record<string, any> = {};
+  for (const [key, value] of Object.entries(obj)) {
+    if (value !== undefined) {
+      if (value !== null && typeof value === 'object' && !Array.isArray(value)) {
+        result[key] = sanitizeForFirestore(value);
+      } else {
+        result[key] = value;
+      }
+    }
+  }
+  return result;
+}
+
 export async function addFirestoreNote(userId: string, note: Note) {
   const path = `users/${userId}/notes/${note.id}`;
   try {
+    const cleanNote = sanitizeForFirestore(note);
     await setDoc(doc(db, 'users', userId, 'notes', note.id), {
-      ...note,
+      ...cleanNote,
       userId,
     });
   } catch (error) {
     handleFirestoreError(error, OperationType.WRITE, path);
+    throw error;
   }
 }
 
@@ -337,12 +354,14 @@ export async function deleteFirestoreNote(userId: string, noteId: string) {
 export async function addFirestoreTask(userId: string, task: TaskItem) {
   const path = `users/${userId}/tasks/${task.id}`;
   try {
+    const cleanTask = sanitizeForFirestore(task);
     await setDoc(doc(db, 'users', userId, 'tasks', task.id), {
-      ...task,
+      ...cleanTask,
       userId,
     });
   } catch (error) {
     handleFirestoreError(error, OperationType.WRITE, path);
+    throw error;
   }
 }
 
@@ -373,12 +392,14 @@ export async function deleteFirestoreTask(userId: string, taskId: string) {
 export async function addFirestoreProject(userId: string, project: Project) {
   const path = `users/${userId}/projects/${project.id}`;
   try {
+    const cleanProject = sanitizeForFirestore(project);
     await setDoc(doc(db, 'users', userId, 'projects', project.id), {
-      ...project,
+      ...cleanProject,
       userId,
     });
   } catch (error) {
     handleFirestoreError(error, OperationType.WRITE, path);
+    throw error;
   }
 }
 
@@ -389,7 +410,8 @@ export async function updateFirestoreProject(
 ) {
   const path = `users/${userId}/projects/${projectId}`;
   try {
-    await updateDoc(doc(db, 'users', userId, 'projects', projectId), data);
+    const cleanData = sanitizeForFirestore(data);
+    await updateDoc(doc(db, 'users', userId, 'projects', projectId), cleanData);
   } catch (error) {
     handleFirestoreError(error, OperationType.UPDATE, path);
   }
@@ -410,7 +432,8 @@ export async function updateUserProfile(
 ) {
   const path = `users/${userId}`;
   try {
-    await setDoc(doc(db, 'users', userId), data, { merge: true });
+    const cleanProfile = sanitizeForFirestore(data);
+    await setDoc(doc(db, 'users', userId), cleanProfile, { merge: true });
   } catch (error) {
     handleFirestoreError(error, OperationType.UPDATE, path);
   }
@@ -422,8 +445,9 @@ export async function batchSaveFirestoreProjects(
 ) {
   try {
     for (const proj of projectsList) {
+      const cleanProject = sanitizeForFirestore(proj);
       await setDoc(doc(db, 'users', userId, 'projects', proj.id), {
-        ...proj,
+        ...cleanProject,
         userId,
       });
     }
@@ -439,11 +463,13 @@ export async function batchSaveFirestoreProjects(
 export async function saveFirestoreRoadmap(userId: string, roadmap: Roadmap) {
   const path = `users/${userId}/roadmaps/${roadmap.id}`;
   try {
+    const cleanRoadmap = sanitizeForFirestore(roadmap);
     await setDoc(doc(db, 'users', userId, 'roadmaps', roadmap.id), {
-      ...roadmap,
+      ...cleanRoadmap,
       userId,
     });
   } catch (error) {
     handleFirestoreError(error, OperationType.WRITE, path);
+    throw error;
   }
 }

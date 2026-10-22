@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { Note } from '../../types';
 import { X, Sparkles, Brain, Code2, Tag, Copy, Check, BookOpen, Share2 } from 'lucide-react';
+import { FormattedMarkdown } from '../common/FormattedMarkdown';
 
 interface NoteDetailModalProps {
   note: Note;
@@ -143,8 +144,8 @@ export const NoteDetailModal: React.FC<NoteDetailModalProps> = ({ note, onClose,
                 </div>
               )}
 
-              <div className="text-xs sm:text-sm text-slate-700 dark:text-slate-200 leading-relaxed whitespace-pre-wrap font-sans bg-slate-50 dark:bg-slate-800/40 p-3.5 rounded-xl border border-slate-100 dark:border-slate-800">
-                {note.content}
+              <div className="bg-slate-50 dark:bg-slate-800/40 p-4 rounded-2xl border border-slate-100 dark:border-slate-800">
+                <FormattedMarkdown content={note.content} />
               </div>
 
               {note.summary && (

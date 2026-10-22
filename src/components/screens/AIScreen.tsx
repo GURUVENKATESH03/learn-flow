@@ -12,6 +12,7 @@ import {
   HelpCircle,
   Code2,
 } from 'lucide-react';
+import { FormattedMarkdown } from '../common/FormattedMarkdown';
 
 interface AIScreenProps {
   notes: Note[];
@@ -31,6 +32,7 @@ export const AIScreen: React.FC<AIScreenProps> = ({ notes, onStartQuiz, onSaveAs
   const [input, setInput] = useState('');
   const [loading, setLoading] = useState(false);
   const [copiedId, setCopiedId] = useState<string | null>(null);
+  const [savedId, setSavedId] = useState<string | null>(null);
 
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
@@ -172,7 +174,11 @@ export const AIScreen: React.FC<AIScreenProps> = ({ notes, onStartQuiz, onSaveAs
                   : 'bg-white dark:bg-slate-800/90 text-slate-800 dark:text-slate-200 border border-slate-100 dark:border-slate-800 rounded-bl-xs shadow-2xs'
               }`}
             >
-              <div className="whitespace-pre-wrap font-sans">{msg.text}</div>
+              {msg.sender === 'user' ? (
+                <div className="whitespace-pre-wrap font-sans">{msg.text}</div>
+              ) : (
+                <FormattedMarkdown content={msg.text} />
+              )}
 
               {/* AI action bar */}
               {msg.sender === 'ai' && (
@@ -190,10 +196,26 @@ export const AIScreen: React.FC<AIScreenProps> = ({ notes, onStartQuiz, onSaveAs
                       {copiedId === msg.id ? 'Copied' : 'Copy'}
                     </button>
                     <button
-                      onClick={() => onSaveAsNote('AI Note: ' + msg.text.slice(0, 30), msg.text)}
+                      onClick={() => {
+                        const title = 'AI Note: ' + msg.text.slice(0, 35).replace(/\n/g, ' ') + (msg.text.length > 35 ? '...' : '');
+                        onSaveAsNote(title, msg.text);
+                        setSavedId(msg.id);
+                        setTimeout(() => setSavedId(null), 2500);
+                      }}
                       className="hover:text-indigo-600 flex items-center gap-1 transition"
+                      title="Save response into your Smart Notes knowledge base"
                     >
-                      <BookOpen className="w-3 h-3" /> Save to Notes
+                      {savedId === msg.id ? (
+                        <>
+                          <Check className="w-3 h-3 text-emerald-500" />
+                          <span className="text-emerald-600 font-semibold">Saved!</span>
+                        </>
+                      ) : (
+                        <>
+                          <BookOpen className="w-3 h-3" />
+                          <span>Save to Notes</span>
+                        </>
+                      )}
                     </button>
                   </div>
                   <span>{msg.timestamp}</span>

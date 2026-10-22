@@ -286,6 +286,113 @@ Return JSON:
   }
 });
 
+// Helper for dynamic keyword tag generation based on note title
+function extractServerTags(title: string = '', content: string = ''): string[] {
+  const combined = `${title} ${content}`.toLowerCase();
+  const matched: string[] = [];
+
+  const techDictionary: [RegExp, string][] = [
+    [/\breact\b/i, 'React'],
+    [/\bvue(\.js)?\b/i, 'Vue.js'],
+    [/\bangular\b/i, 'Angular'],
+    [/\bnext(\.js)?\b/i, 'Next.js'],
+    [/\bsvelte\b/i, 'Svelte'],
+    [/\btailwind(\s?css)?\b/i, 'Tailwind CSS'],
+    [/\bspring(\s?boot)?\b/i, 'Spring Boot'],
+    [/\bjava\b/i, 'Java'],
+    [/\bnode(\.js)?\b/i, 'Node.js'],
+    [/\bpython\b/i, 'Python'],
+    [/\bgo(lang)?\b/i, 'Go'],
+    [/\brust\b/i, 'Rust'],
+    [/\btypescript\b/i, 'TypeScript'],
+    [/\bjavascript\b/i, 'JavaScript'],
+    [/\bsql\b/i, 'SQL'],
+    [/\bnosql\b/i, 'NoSQL'],
+    [/\bpostgres(ql)?\b/i, 'PostgreSQL'],
+    [/\bmysql\b/i, 'MySQL'],
+    [/\bmongo(db)?\b/i, 'MongoDB'],
+    [/\bredis\b/i, 'Redis'],
+    [/\bcassandra\b/i, 'Cassandra'],
+    [/\bmicroservices?\b/i, 'Microservices'],
+    [/\bdistributed(\s?systems?)?\b/i, 'Distributed Systems'],
+    [/\bclean\s?architecture\b/i, 'Clean Architecture'],
+    [/\bkafka\b/i, 'Kafka'],
+    [/\brabbitmq\b/i, 'RabbitMQ'],
+    [/\bevent-?driven\b/i, 'Event-Driven'],
+    [/\bapi\b/i, 'API'],
+    [/\brest(ful)?\b/i, 'REST API'],
+    [/\bgraphql\b/i, 'GraphQL'],
+    [/\bdocker\b/i, 'Docker'],
+    [/\bkubernetes|k8s\b/i, 'Kubernetes'],
+    [/\bci\/?cd\b/i, 'CI/CD'],
+    [/\bdevops\b/i, 'DevOps'],
+    [/\btesting|unit\s?tests?\b/i, 'Testing'],
+    [/\bsecurity|auth|jwt|oauth\b/i, 'Security'],
+    [/\bjpa|hibernate\b/i, 'JPA / ORM'],
+  ];
+
+  for (const [regex, tag] of techDictionary) {
+    if (regex.test(combined) && !matched.includes(tag)) {
+      matched.push(tag);
+      if (matched.length >= 4) break;
+    }
+  }
+
+  if (matched.length === 0 && title.trim()) {
+    const stopWords = new Set(['the', 'and', 'for', 'with', 'how', 'what', 'why', 'in', 'on', 'at', 'to', 'of', 'a', 'an', 'is', 'vs', 'or']);
+    const words = title
+      .replace(/[^\w\s]/g, '')
+      .split(/\s+/)
+      .filter((w) => w.length > 2 && !stopWords.has(w.toLowerCase()));
+
+    for (const w of words) {
+      const capitalized = w.charAt(0).toUpperCase() + w.slice(1);
+      if (!matched.includes(capitalized)) {
+        matched.push(capitalized);
+      }
+      if (matched.length >= 3) break;
+    }
+  }
+
+  return matched.length > 0 ? matched : ['General', 'Engineering'];
+}
+
+// 5. Dynamic Note Auto-Tagger Route
+app.post('/api/ai/auto-tag', async (req: Request, res: Response) => {
+  const { title = '', content = '' } = req.body;
+
+  if (!title.trim() && !content.trim()) {
+    return res.json({ tags: ['General'] });
+  }
+
+  try {
+    if (!process.env.GEMINI_API_KEY) {
+      return res.json({ tags: extractServerTags(title, content) });
+    }
+
+    const prompt = `Analyze this note title: "${title}" and note excerpt: "${content.slice(0, 300)}".
+Generate 3 to 5 concise, professional tech tags strictly based on the note title and topic.
+Return JSON ONLY as an array of string tags, e.g. ["Tag1", "Tag2", "Tag3"]. No other text.`;
+
+    const response = await ai.models.generateContent({
+      model: 'gemini-3.8-flash',
+      contents: prompt,
+      config: {
+        responseMimeType: 'application/json',
+      },
+    });
+
+    const parsed = JSON.parse(response.text || '[]');
+    if (Array.isArray(parsed) && parsed.length > 0) {
+      return res.json({ tags: parsed.slice(0, 5) });
+    }
+    return res.json({ tags: extractServerTags(title, content) });
+  } catch (err: any) {
+    console.warn('Auto-tag Gemini route notice:', err?.message || err);
+    return res.json({ tags: extractServerTags(title, content) });
+  }
+});
+
 // Helper: Format ISO date string into human-friendly relative time
 function formatTimeAgo(dateString?: string): string {
   if (!dateString) return 'recently';

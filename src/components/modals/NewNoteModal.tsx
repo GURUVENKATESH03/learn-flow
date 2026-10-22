@@ -19,14 +19,16 @@ import {
 interface NewNoteModalProps {
   onClose: () => void;
   onSave: (note: Partial<Note>) => void;
+  onError?: (msg: string) => void;
 }
 
-export const NewNoteModal: React.FC<NewNoteModalProps> = ({ onClose, onSave }) => {
+export const NewNoteModal: React.FC<NewNoteModalProps> = ({ onClose, onSave, onError }) => {
   const [title, setTitle] = useState('');
   const [content, setContent] = useState('');
   const [tagInput, setTagInput] = useState('');
-  const [tags, setTags] = useState<string[]>(['Spring Boot', 'Backend']);
+  const [tags, setTags] = useState<string[]>([]);
   const [isAutoTagging, setIsAutoTagging] = useState(false);
+  const [formError, setFormError] = useState<string | null>(null);
 
   // Image Attachment State
   const [imageUrl, setImageUrl] = useState<string | null>(null);
@@ -168,9 +170,12 @@ export const NewNoteModal: React.FC<NewNoteModalProps> = ({ onClose, onSave }) =
     const file = e.target.files?.[0];
     if (file) {
       if (file.size > 5 * 1024 * 1024) {
-        alert('Please choose an image under 5MB.');
+        const errorMsg = 'Please choose an image under 5MB.';
+        setFormError(errorMsg);
+        onError?.(errorMsg);
         return;
       }
+      setFormError(null);
       const reader = new FileReader();
       reader.onload = () => {
         setImageUrl(reader.result as string);
@@ -181,6 +186,7 @@ export const NewNoteModal: React.FC<NewNoteModalProps> = ({ onClose, onSave }) =
 
   const handleSelectSampleDiagram = (url: string) => {
     setImageUrl(url);
+    setFormError(null);
   };
 
   const handleAddTag = () => {
@@ -194,18 +200,140 @@ export const NewNoteModal: React.FC<NewNoteModalProps> = ({ onClose, onSave }) =
     setTags(tags.filter((t) => t !== tagToRemove));
   };
 
-  const handleAiAutoTag = () => {
+  // Client-side rule extractor for instant, 100% reliable title-relevant tags
+  const extractTagsFromTitle = (noteTitle: string, noteContent: string = ''): string[] => {
+    const combined = `${noteTitle} ${noteContent}`.toLowerCase();
+    const matched: string[] = [];
+
+    const techDictionary: [RegExp, string][] = [
+      [/\breact\b/i, 'React'],
+      [/\bvue(\.js)?\b/i, 'Vue.js'],
+      [/\bangular\b/i, 'Angular'],
+      [/\bnext(\.js)?\b/i, 'Next.js'],
+      [/\bsvelte\b/i, 'Svelte'],
+      [/\btailwind(\s?css)?\b/i, 'Tailwind CSS'],
+      [/\bcss\b/i, 'CSS'],
+      [/\bspring(\s?boot)?\b/i, 'Spring Boot'],
+      [/\bjava\b/i, 'Java'],
+      [/\bnode(\.js)?\b/i, 'Node.js'],
+      [/\bpython\b/i, 'Python'],
+      [/\bgo(lang)?\b/i, 'Go'],
+      [/\brust\b/i, 'Rust'],
+      [/\btypescript\b/i, 'TypeScript'],
+      [/\bjavascript\b/i, 'JavaScript'],
+      [/\bsql\b/i, 'SQL'],
+      [/\bnosql\b/i, 'NoSQL'],
+      [/\bpostgres(ql)?\b/i, 'PostgreSQL'],
+      [/\bmysql\b/i, 'MySQL'],
+      [/\bmongo(db)?\b/i, 'MongoDB'],
+      [/\bredis\b/i, 'Redis'],
+      [/\bcassandra\b/i, 'Cassandra'],
+      [/\bmicroservices?\b/i, 'Microservices'],
+      [/\bdistributed(\s?systems?)?\b/i, 'Distributed Systems'],
+      [/\bclean\s?architecture\b/i, 'Clean Architecture'],
+      [/\bdesign\s?patterns?\b/i, 'Design Patterns'],
+      [/\bkafka\b/i, 'Kafka'],
+      [/\brabbitmq\b/i, 'RabbitMQ'],
+      [/\bevent-?driven\b/i, 'Event-Driven'],
+      [/\bapi\b/i, 'API'],
+      [/\brest(ful)?\b/i, 'REST API'],
+      [/\bgraphql\b/i, 'GraphQL'],
+      [/\bdocker\b/i, 'Docker'],
+      [/\bkubernetes|k8s\b/i, 'Kubernetes'],
+      [/\bci\/?cd\b/i, 'CI/CD'],
+      [/\bdevops\b/i, 'DevOps'],
+      [/\btesting|unit\s?tests?\b/i, 'Testing'],
+      [/\bsecurity|auth|jwt|oauth\b/i, 'Security'],
+      [/\bjpa|hibernate\b/i, 'JPA / ORM'],
+      [/\bcache|caching\b/i, 'Caching'],
+      [/\bstate\s?management\b/i, 'State Management'],
+    ];
+
+    for (const [regex, tag] of techDictionary) {
+      if (regex.test(combined) && !matched.includes(tag)) {
+        matched.push(tag);
+        if (matched.length >= 4) break;
+      }
+    }
+
+    if (matched.length === 0 && noteTitle.trim()) {
+      const stopWords = new Set(['the', 'and', 'for', 'with', 'how', 'what', 'why', 'in', 'on', 'at', 'to', 'of', 'a', 'an', 'is', 'vs', 'or', 'by', 'from']);
+      const words = noteTitle
+        .replace(/[^\w\s]/g, '')
+        .split(/\s+/)
+        .filter((w) => w.length > 2 && !stopWords.has(w.toLowerCase()));
+
+      for (const w of words) {
+        const capitalized = w.charAt(0).toUpperCase() + w.slice(1);
+        if (!matched.includes(capitalized)) {
+          matched.push(capitalized);
+        }
+        if (matched.length >= 3) break;
+      }
+    }
+
+    return matched.length > 0 ? matched : ['Software Architecture', 'Core Principles'];
+  };
+
+  const handleAiAutoTag = async () => {
+    const rawTitle = title.trim();
+    const rawContent = content.trim();
+
+    if (!rawTitle && !rawContent) {
+      const msg = 'Please enter a Note Title first to auto-generate tags.';
+      setFormError(msg);
+      onError?.(msg);
+      return;
+    }
+
     setIsAutoTagging(true);
-    setTimeout(() => {
-      const generated = ['Microservices', 'Distributed Systems', 'Architecture'];
-      setTags((prev) => Array.from(new Set([...prev, ...generated])));
+    setFormError(null);
+
+    try {
+      let suggested: string[] = [];
+
+      try {
+        const res = await fetch('/api/ai/auto-tag', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ title: rawTitle, content: rawContent }),
+        });
+
+        if (res.ok) {
+          const data = await res.json();
+          if (Array.isArray(data.tags) && data.tags.length > 0) {
+            suggested = data.tags;
+          }
+        }
+      } catch (e) {
+        // Fallback to client-side extractor below
+      }
+
+      if (suggested.length === 0) {
+        suggested = extractTagsFromTitle(rawTitle, rawContent);
+      }
+
+      setTags((prev) => Array.from(new Set([...prev, ...suggested])));
+    } catch (err) {
+      const fallback = extractTagsFromTitle(rawTitle, rawContent);
+      setTags((prev) => Array.from(new Set([...prev, ...fallback])));
+    } finally {
       setIsAutoTagging(false);
-    }, 700);
+    }
   };
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    if (!title.trim() || !content.trim()) return;
+    if (!title.trim()) {
+      setFormError('Please enter a note title.');
+      onError?.('Please enter a note title before saving.');
+      return;
+    }
+    if (!content.trim()) {
+      setFormError('Please enter note content.');
+      onError?.('Please enter note content before saving.');
+      return;
+    }
 
     if (isListening && recognitionRef.current) {
       try {
@@ -217,15 +345,16 @@ export const NewNoteModal: React.FC<NewNoteModalProps> = ({ onClose, onSave }) =
       title: title.trim(),
       content: content.trim(),
       imageUrl: imageUrl || undefined,
-      tags,
+      tags: tags.length > 0 ? tags : ['General'],
       summary: content.slice(0, 100) + '...',
       color: 'teal',
       mindMapNodes: [
-        { id: '1', label: title, type: 'root' },
+        { id: '1', label: title.trim(), type: 'root' },
         { id: '2', label: 'Core Principles', type: 'concept' },
         { id: '3', label: 'Implementation', type: 'practice' },
       ],
     });
+    onClose();
   };
 
   return (
@@ -254,6 +383,13 @@ export const NewNoteModal: React.FC<NewNoteModalProps> = ({ onClose, onSave }) =
 
         {/* Form Body */}
         <form onSubmit={handleSubmit} className="p-5 overflow-y-auto flex-1 space-y-4">
+          {formError && (
+            <div className="p-3 rounded-2xl bg-rose-50 dark:bg-rose-950/40 border border-rose-200 dark:border-rose-900 flex items-center gap-2 text-xs font-semibold text-rose-600 dark:text-rose-400 animate-in fade-in">
+              <AlertCircle className="w-4 h-4 shrink-0" />
+              <span>{formError}</span>
+            </div>
+          )}
+
           {/* Note Title */}
           <div>
             <div className="flex items-center justify-between mb-1">

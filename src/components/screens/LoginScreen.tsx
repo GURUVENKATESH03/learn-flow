@@ -33,13 +33,12 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ onLoginSuccess }) => {
       role: 'Full Stack Software Engineer',
       avatarUrl:
         'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=150&auto=format&fit=crop&q=80',
-      streak: 5,
-      totalNotes: 3,
-      totalProjects: 2,
-      weeklyGoals: { completed: 4, total: 6 },
+      streak: 0,
+      totalNotes: 0,
+      totalProjects: 0,
+      weeklyGoals: { completed: 0, total: 0 },
       isGoogleConnected: false,
-      githubUsername: 'prakash-dev',
-      githubConnected: true,
+      githubConnected: false,
     };
     onLoginSuccess(guestProfile);
   };
@@ -152,26 +151,34 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ onLoginSuccess }) => {
 
             {/* Unauthorized Domain Diagnostic Banner */}
             {isUnauthorizedDomain && (
-              <div className="p-4 rounded-2xl bg-amber-50 dark:bg-amber-950/50 border border-amber-200 dark:border-amber-900/60 text-amber-800 dark:text-amber-200 text-xs space-y-2">
+              <div className="p-4 rounded-2xl bg-amber-50 dark:bg-amber-950/50 border border-amber-200 dark:border-amber-900/60 text-amber-800 dark:text-amber-200 text-xs space-y-3">
                 <div className="flex items-start gap-2">
                   <AlertCircle className="w-4 h-4 text-amber-600 shrink-0 mt-0.5" />
                   <div>
-                    <span className="font-bold">Firebase Domain Notice:</span>
-                    <p className="mt-0.5 leading-relaxed">
-                      Google OAuth requires <code className="bg-amber-100 dark:bg-amber-900/60 px-1 py-0.5 rounded font-mono text-[11px]">{currentDomain}</code> to be in your Firebase Console under:
-                    </p>
-                    <p className="font-semibold text-amber-900 dark:text-amber-100 mt-0.5">
-                      Authentication → Settings → Authorized domains
+                    <span className="font-bold text-sm">Firebase Domain Authorization Required</span>
+                    <p className="mt-1 leading-relaxed">
+                      Google OAuth blocks sign-ins until your Vercel domain <code className="bg-amber-100 dark:bg-amber-900/60 px-1.5 py-0.5 rounded font-mono text-[11px] font-bold text-amber-950 dark:text-amber-100">{currentDomain}</code> is added to your Firebase project.
                     </p>
                   </div>
                 </div>
-                <div className="pt-1">
+
+                <div className="space-y-2 pt-1">
                   <button
                     onClick={handleGuestLogin}
-                    className="w-full py-2 px-3 rounded-xl bg-amber-600 hover:bg-amber-700 text-white font-bold text-xs transition flex items-center justify-center gap-1.5"
+                    className="w-full py-2.5 px-3 rounded-xl bg-amber-600 hover:bg-amber-700 text-white font-bold text-xs transition flex items-center justify-center gap-1.5 shadow-sm cursor-pointer"
                   >
-                    <UserCheck className="w-3.5 h-3.5" /> Continue in Instant Access Mode
+                    <UserCheck className="w-4 h-4" /> Continue in Instant Access Mode (No Setup Needed)
                   </button>
+
+                  <a
+                    href="https://console.firebase.google.com/project/elemental-context-w4mm2/authentication/settings"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="w-full py-2 px-3 rounded-xl bg-white dark:bg-slate-800 hover:bg-slate-50 dark:hover:bg-slate-700 text-slate-800 dark:text-slate-200 font-semibold text-xs border border-amber-300 dark:border-amber-800/80 transition flex items-center justify-center gap-1.5"
+                  >
+                    <ExternalLink className="w-3.5 h-3.5 text-amber-600" />
+                    <span>Open Firebase Console to Authorize Domain</span>
+                  </a>
                 </div>
               </div>
             )}
