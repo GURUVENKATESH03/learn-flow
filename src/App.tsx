@@ -5,7 +5,6 @@
 
 import React, { useState, useEffect } from 'react';
 import { onAuthStateChanged, User as FirebaseUser } from 'firebase/auth';
-import { MobileFrame } from './components/MobileFrame';
 import { Header } from './components/Header';
 import { Navigation, TabType } from './components/Navigation';
 import { HomeScreen } from './components/screens/HomeScreen';
@@ -47,20 +46,196 @@ import { Note, TaskItem, Project, Roadmap, Quiz, UserProfile } from './types';
 import confetti from 'canvas-confetti';
 import { BookOpen, Loader2 } from 'lucide-react';
 
+// Starter data for Guest / Instant Demo mode
+const initialGuestNotes: Note[] = [
+  {
+    id: 'n1',
+    title: 'Clean Architecture in Spring Boot 3.3',
+    content:
+      'Domain-centric layers ensure decoupling of business logic from framework details. Core domain entities remain framework-agnostic while adapters interface with persistence and web delivery.',
+    summary:
+      'Core domain isolation, port/adapter patterns, and testability in modern microservices.',
+    tags: ['Architecture', 'Spring Boot', 'Java'],
+    createdAt: new Date().toISOString(),
+    updatedAt: new Date().toISOString(),
+    timeAgo: '2h ago',
+    color: 'teal',
+    mindMapNodes: [
+      { id: '1', label: 'Domain Core', type: 'root' },
+      { id: '2', label: 'Use Cases & Ports', type: 'concept' },
+      { id: '3', label: 'Adapters & Infrastructure', type: 'practice' },
+    ],
+  },
+  {
+    id: 'n2',
+    title: 'Java 21 Virtual Threads & Loom Concurrency',
+    content:
+      'Virtual threads are lightweight threads managed by the JVM rather than the OS kernel. They drastically reduce the memory footprint of high-throughput I/O bound web applications.',
+    summary:
+      'JVM-managed lightweight threads enabling 10k+ concurrent requests with standard imperative code.',
+    tags: ['Java 21', 'Concurrency', 'Performance'],
+    createdAt: new Date().toISOString(),
+    updatedAt: new Date().toISOString(),
+    timeAgo: '1d ago',
+    color: 'indigo',
+    mindMapNodes: [
+      { id: '1', label: 'Virtual Threads', type: 'root' },
+      { id: '2', label: 'Carrier Threads', type: 'concept' },
+      { id: '3', label: 'Unpinned I/O', type: 'practice' },
+    ],
+  },
+  {
+    id: 'n3',
+    title: 'Event-Driven Architectures with Kafka',
+    content:
+      'Partitioning strategies, consumer group offsets, idempotent producers, and dead-letter topics for mission-critical microservice events.',
+    summary:
+      'Reliable distributed event streaming, offset management, and at-least-once delivery guarantees.',
+    tags: ['Kafka', 'Microservices', 'Distributed'],
+    createdAt: new Date().toISOString(),
+    updatedAt: new Date().toISOString(),
+    timeAgo: '3d ago',
+    color: 'amber',
+  },
+];
+
+const initialGuestTasks: TaskItem[] = [
+  { id: 't1', text: 'Benchmark Virtual Threads with 10k concurrent requests', completed: true },
+  { id: 't2', text: 'Implement GitHub OAuth & Repo Webhook synchronization', completed: true },
+  { id: 't3', text: 'Design resilient Circuit Breaker with Resilience4j', completed: false },
+  { id: 't4', text: 'Review Spring Security 6.3 JWT Filter Chain', completed: false },
+];
+
+const initialGuestProjects: Project[] = [
+  {
+    id: 'p1',
+    title: 'LearnFlow Web & Mobile Hub',
+    description:
+      'AI-assisted developer learning platform with GitHub sync, interactive concept mind-maps, and automated roadmaps.',
+    progress: 85,
+    tags: ['React', 'TypeScript', 'Tailwind', 'Express'],
+    repoUrl: 'https://github.com/learnflow/core',
+    iconBg: 'indigo',
+    iconColor: 'indigo',
+    visibility: 'public',
+    stars: 28,
+    forks: 7,
+    isGitHubSynced: true,
+    githubOwner: 'learnflow',
+    githubRepo: 'core',
+    defaultBranch: 'main',
+    lastSyncedAt: new Date().toISOString(),
+    commits: [
+      {
+        id: 'c1',
+        hash: '2afb7fe',
+        message: 'feat: complete LearnFlow smart learning app with GitHub sync, commits, and PRs',
+        author: 'Developer',
+        timeAgo: '10m ago',
+        branch: 'main',
+      },
+      {
+        id: 'c2',
+        hash: '7c8a901',
+        message: 'feat: add interactive concept mind-mapping and dynamic quizzes',
+        author: 'Developer',
+        timeAgo: '2h ago',
+        branch: 'main',
+      },
+    ],
+    pullRequests: [
+      {
+        id: 101,
+        number: 14,
+        title: 'Enhance desktop responsive layout & add instant guest access',
+        state: 'open',
+        author: 'developer',
+        createdAt: new Date().toISOString(),
+        timeAgo: '15m ago',
+        htmlUrl: '#',
+      },
+    ],
+    tasks: [
+      { id: 'pt1', text: 'Responsive laptop & desktop viewport layout', done: true },
+      { id: 'pt2', text: 'Deploy to Vercel with SPA routing rewrite', done: true },
+      { id: 'pt3', text: 'Connect GitHub repository for live branch commits', done: true },
+    ],
+    status: 'Active',
+  },
+];
+
+const initialGuestRoadmap: Roadmap = {
+  id: 'rm-1',
+  title: 'Full Stack & Distributed Systems Mastery',
+  roleTrack: 'Software Engineer',
+  currentWeek: 3,
+  totalWeeks: 12,
+  overallProgress: 45,
+  milestones: [
+    {
+      phase: 'Phase 1',
+      title: 'Spring Boot 3 & Core Microservices Architecture',
+      weeks: 'Weeks 1-3',
+      status: 'In Progress',
+      progress: 75,
+      tasks: [
+        'Domain-Driven Design (DDD) & Clean Architecture',
+        'Spring Security 6 with Stateless JWT Authentication',
+        'Virtual Threads & High Throughput Benchmarking',
+      ],
+    },
+    {
+      phase: 'Phase 2',
+      title: 'Distributed Messaging & Event Streaming',
+      weeks: 'Weeks 4-6',
+      status: 'Upcoming',
+      progress: 20,
+      tasks: [
+        'Apache Kafka Producer Idempotence & Consumer Groups',
+        'Saga Pattern for Distributed Transaction Consistency',
+        'Dead-Letter Queues & Resilient Retry Strategies',
+      ],
+    },
+    {
+      phase: 'Phase 3',
+      title: 'Cloud Native Deployment & Observability',
+      weeks: 'Weeks 7-10',
+      status: 'Upcoming',
+      progress: 0,
+      tasks: [
+        'Docker Multi-Stage Builds & Kubernetes Pod Scheduling',
+        'Distributed Tracing with OpenTelemetry & Grafana',
+        'CI/CD Pipeline with Automated Smoke Testing',
+      ],
+    },
+  ],
+};
+
 export default function App() {
   const [currentUser, setCurrentUser] = useState<FirebaseUser | null>(null);
   const [userProfile, setUserProfile] = useState<UserProfile | null>(null);
+  const [isGuestMode, setIsGuestMode] = useState<boolean>(() => {
+    return localStorage.getItem('learnflow_guest_mode') === 'true';
+  });
   const [isAuthChecking, setIsAuthChecking] = useState<boolean>(true);
 
   const [theme, setTheme] = useState<'light' | 'dark'>(() => {
     return (localStorage.getItem('learnflow_theme') as 'light' | 'dark') || 'light';
   });
 
-  // Live Firestore database states - starts clean
-  const [notes, setNotes] = useState<Note[]>([]);
-  const [tasks, setTasks] = useState<TaskItem[]>([]);
-  const [projects, setProjects] = useState<Project[]>([]);
-  const [roadmap, setRoadmap] = useState<Roadmap | null>(null);
+  // Live database states
+  const [notes, setNotes] = useState<Note[]>(() => {
+    return isGuestMode ? initialGuestNotes : [];
+  });
+  const [tasks, setTasks] = useState<TaskItem[]>(() => {
+    return isGuestMode ? initialGuestTasks : [];
+  });
+  const [projects, setProjects] = useState<Project[]>(() => {
+    return isGuestMode ? initialGuestProjects : [];
+  });
+  const [roadmap, setRoadmap] = useState<Roadmap | null>(() => {
+    return isGuestMode ? initialGuestRoadmap : null;
+  });
 
   const [activeTab, setActiveTab] = useState<TabType>('home');
   const [selectedNote, setSelectedNote] = useState<Note | null>(null);
@@ -93,17 +268,15 @@ export default function App() {
     const unsubscribeAuth = onAuthStateChanged(auth, (firebaseUser) => {
       setCurrentUser(firebaseUser);
       if (!firebaseUser) {
-        setUserProfile(null);
-        setNotes([]);
-        setTasks([]);
-        setProjects([]);
-        setRoadmap(null);
+        if (!isGuestMode) {
+          setUserProfile(null);
+        }
         setIsAuthChecking(false);
       }
     });
 
     return () => unsubscribeAuth();
-  }, []);
+  }, [isGuestMode]);
 
   // Subscribe to live Firestore collections for the authenticated user
   useEffect(() => {
@@ -112,17 +285,6 @@ export default function App() {
     const userId = currentUser.uid;
 
     const unsubProfile = subscribeToUserProfile(userId, async (profile) => {
-      // If profile contains old leftover mock data from previous seeds, wipe it clean
-      if (
-        profile &&
-        (profile.streak === 14 ||
-          profile.totalNotes === 4 ||
-          profile.totalProjects === 3 ||
-          (profile.weeklyGoals && profile.weeklyGoals.total === 10))
-      ) {
-        await clearUserFirestoreData(userId);
-        return;
-      }
       setUserProfile(profile);
       setIsAuthChecking(false);
     });
@@ -156,243 +318,327 @@ export default function App() {
     };
   }, [currentUser]);
 
-  // Handle Google Login success
+  // Handle Login success (Google or Guest)
   const handleLoginSuccess = (profile: UserProfile) => {
     setUserProfile(profile);
+    setIsGuestMode(true);
+    localStorage.setItem('learnflow_guest_mode', 'true');
     setIsAuthChecking(false);
+
+    if (notes.length === 0) setNotes(initialGuestNotes);
+    if (tasks.length === 0) setTasks(initialGuestTasks);
+    if (projects.length === 0) setProjects(initialGuestProjects);
+    if (!roadmap) setRoadmap(initialGuestRoadmap);
+
     confetti({ particleCount: 50, spread: 60 });
   };
 
-  // Sign out from Firebase
+  // Sign out
   const handleLogout = async () => {
     try {
-      await logOut();
+      if (currentUser) {
+        await logOut();
+      }
+      setIsGuestMode(false);
+      localStorage.removeItem('learnflow_guest_mode');
       setUserProfile(null);
       setCurrentUser(null);
+      setNotes([]);
+      setTasks([]);
+      setProjects([]);
+      setRoadmap(null);
     } catch (err) {
       console.error('Logout error:', err);
     }
   };
 
-  // Reset database to completely fresh state (0 notes, 0 projects, 0 goals, 0 streak)
+  // Reset database / clear state
   const handleResetDatabase = async () => {
-    if (!currentUser) return;
-    try {
-      await clearUserFirestoreData(currentUser.uid);
-      setNotes([]);
-      setTasks([]);
-      setProjects([]);
-      setRoadmap(null);
-      setUserProfile({
-        name: currentUser.displayName || 'Learner',
-        email: currentUser.email || '',
-        role: 'Software Developer',
-        avatarUrl:
-          currentUser.photoURL ||
-          'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=150&auto=format&fit=crop&q=80',
-        streak: 0,
-        totalNotes: 0,
-        totalProjects: 0,
-        weeklyGoals: { completed: 0, total: 0 },
-        googleId: currentUser.uid,
-        isGoogleConnected: true,
-      });
-    } catch (err) {
-      console.error('Reset database error:', err);
+    if (currentUser) {
+      try {
+        await clearUserFirestoreData(currentUser.uid);
+      } catch (err) {
+        console.error('Reset database error:', err);
+      }
+    }
+    setNotes([]);
+    setTasks([]);
+    setProjects([]);
+    setRoadmap(null);
+    setUserProfile((prev) =>
+      prev
+        ? {
+            ...prev,
+            streak: 0,
+            totalNotes: 0,
+            totalProjects: 0,
+            weeklyGoals: { completed: 0, total: 0 },
+          }
+        : null
+    );
+  };
+
+  // Note Handlers
+  const handleSaveNote = async (newNoteData: Partial<Note>) => {
+    const defaultTags = ['Engineering', 'Architecture'];
+    const now = new Date().toISOString();
+    const noteId = newNoteData.id || `note-${Date.now()}`;
+    const fullNote: Note = {
+      id: noteId,
+      title: newNoteData.title || 'Untitled Note',
+      content: newNoteData.content || '',
+      summary:
+        (newNoteData.content || '').slice(0, 150) +
+        ((newNoteData.content || '').length > 150 ? '...' : ''),
+      imageUrl: newNoteData.imageUrl,
+      tags: newNoteData.tags && newNoteData.tags.length > 0 ? newNoteData.tags : defaultTags,
+      timeAgo: 'Just now',
+      color: (newNoteData.color as any) || 'teal',
+      mindMapNodes: newNoteData.mindMapNodes,
+      createdAt: now,
+      updatedAt: now,
+    };
+
+    if (currentUser) {
+      try {
+        await addFirestoreNote(currentUser.uid, fullNote);
+      } catch (err) {
+        console.error('Error adding firestore note:', err);
+      }
+    } else {
+      setNotes((prev) => [fullNote, ...prev]);
     }
   };
 
-  // Toggle tasks in Today's Focus - updates directly in Firebase
-  const handleToggleTask = async (id: string) => {
-    if (!currentUser) return;
-    const task = tasks.find((t) => t.id === id);
-    if (!task) return;
-    const nextCompleted = !task.completed;
-    await toggleFirestoreTask(currentUser.uid, id, nextCompleted);
-  };
-
-  // Add new task - writes directly to Firestore
-  const handleAddTask = async (text: string) => {
-    if (!currentUser) return;
-    const newTask: TaskItem = {
-      id: `task-${Date.now()}`,
-      text,
-      completed: false,
-      category: 'Focus',
-    };
-    await addFirestoreTask(currentUser.uid, newTask);
-  };
-
-  // Delete task - removes directly from Firestore
-  const handleDeleteTask = async (id: string) => {
-    if (!currentUser) return;
-    await deleteFirestoreTask(currentUser.uid, id);
-  };
-
-  // Save new note - writes directly to Firestore with image attachment and mind map support
-  const handleSaveNote = async (noteData: Partial<Note>) => {
-    if (!currentUser) return;
-    const newNote: Note = {
-      id: `note-${Date.now()}`,
-      title: noteData.title || 'Untitled Note',
-      content: noteData.content || '',
-      imageUrl: noteData.imageUrl,
-      summary: noteData.summary || noteData.content?.slice(0, 100),
-      tags: noteData.tags || ['General'],
-      createdAt: new Date().toISOString(),
-      updatedAt: new Date().toISOString(),
-      timeAgo: 'Just now',
-      color: noteData.color || 'teal',
-      mindMapNodes: noteData.mindMapNodes || [
-        { id: '1', label: noteData.title || 'Note', type: 'root' },
-      ],
-    };
-
-    await addFirestoreNote(currentUser.uid, newNote);
-    setShowNewNoteModal(false);
-    confetti({ particleCount: 40, spread: 45 });
-  };
-
-  // Delete note from Firestore
-  const handleDeleteNote = async (id: string) => {
-    if (!currentUser) return;
-    await deleteFirestoreNote(currentUser.uid, id);
-    if (selectedNote?.id === id) {
+  const handleDeleteNote = async (noteId: string) => {
+    if (currentUser) {
+      try {
+        await deleteFirestoreNote(currentUser.uid, noteId);
+      } catch (err) {
+        console.error('Error deleting firestore note:', err);
+      }
+    } else {
+      setNotes((prev) => prev.filter((n) => n.id !== noteId));
+    }
+    if (selectedNote?.id === noteId) {
       setSelectedNote(null);
     }
   };
 
-  // Toggle project tasks in Firestore
-  const handleToggleProjectTask = async (projectId: string, taskId: string) => {
-    if (!currentUser) return;
-    const proj = projects.find((p) => p.id === projectId);
-    if (!proj) return;
+  // Task Handlers
+  const handleToggleTask = async (taskId: string) => {
+    const task = tasks.find((t) => t.id === taskId);
+    if (!task) return;
 
-    const updatedTasks = proj.tasks.map((t) =>
-      t.id === taskId ? { ...t, done: !t.done } : t
-    );
-    const completedCount = updatedTasks.filter((t) => t.done).length;
-    const newProgress = Math.round((completedCount / updatedTasks.length) * 100);
-
-    await updateFirestoreProject(currentUser.uid, projectId, {
-      tasks: updatedTasks,
-      progress: newProgress,
-    });
+    if (currentUser) {
+      try {
+        await toggleFirestoreTask(currentUser.uid, taskId, task.completed);
+      } catch (err) {
+        console.error('Error toggling firestore task:', err);
+      }
+    } else {
+      setTasks((prev) =>
+        prev.map((t) => (t.id === taskId ? { ...t, completed: !t.completed } : t))
+      );
+    }
   };
 
-  // Add project to Firestore
+  const handleAddTask = async (text: string) => {
+    const newTask: TaskItem = {
+      id: `task-${Date.now()}`,
+      text,
+      completed: false,
+      category: 'General',
+    };
+    if (currentUser) {
+      try {
+        await addFirestoreTask(currentUser.uid, newTask);
+      } catch (err) {
+        console.error('Error adding firestore task:', err);
+      }
+    } else {
+      setTasks((prev) => [newTask, ...prev]);
+    }
+  };
+
+  const handleDeleteTask = async (taskId: string) => {
+    if (currentUser) {
+      try {
+        await deleteFirestoreTask(currentUser.uid, taskId);
+      } catch (err) {
+        console.error('Error deleting firestore task:', err);
+      }
+    } else {
+      setTasks((prev) => prev.filter((t) => t.id !== taskId));
+    }
+  };
+
+  // Project Handlers
   const handleAddProject = async (newProj: Partial<Project>) => {
-    if (!currentUser) return;
-    const project: Project = {
+    const fullProject: Project = {
       id: newProj.id || `proj-${Date.now()}`,
-      title: newProj.title || 'New Project',
-      description: newProj.description || '',
+      title: newProj.title || 'New Repository',
+      description: newProj.description || 'Project managed in LearnFlow',
       progress: newProj.progress || 0,
-      tags: newProj.tags || ['Code'],
+      tags: newProj.tags || ['Java', 'Spring'],
       repoUrl: newProj.repoUrl || '#',
-      iconBg: newProj.iconBg || 'bg-indigo-100 text-indigo-600',
+      iconBg: newProj.iconBg || 'indigo',
       iconColor: newProj.iconColor || 'indigo',
       visibility: newProj.visibility || 'public',
-      stars: newProj.stars || 0,
-      forks: newProj.forks || 0,
-      isGitHubSynced: newProj.isGitHubSynced ?? true,
+      stars: newProj.stars ?? 0,
+      forks: newProj.forks ?? 0,
+      isGitHubSynced: newProj.isGitHubSynced || false,
       githubOwner: newProj.githubOwner,
       githubRepo: newProj.githubRepo,
-      defaultBranch: newProj.defaultBranch,
+      defaultBranch: newProj.defaultBranch || 'main',
       lastSyncedAt: newProj.lastSyncedAt || new Date().toISOString(),
-      status: 'Active',
       commits: newProj.commits || [],
       pullRequests: newProj.pullRequests || [],
       tasks: newProj.tasks || [],
+      status: newProj.status || 'Active',
     };
 
-    await addFirestoreProject(currentUser.uid, project);
-  };
-
-  // Delete project from Firestore
-  const handleDeleteProject = async (projectId: string) => {
-    if (!currentUser) return;
-    await deleteFirestoreProject(currentUser.uid, projectId);
-  };
-
-  // Batch save multiple projects from GitHub auto-sync
-  const handleBatchAddProjects = async (newProjects: Project[]) => {
-    if (!currentUser) return;
-    await batchSaveFirestoreProjects(currentUser.uid, newProjects);
-  };
-
-  // Update existing project details
-  const handleUpdateProject = async (projectId: string, data: Partial<Project>) => {
-    if (!currentUser) return;
-    await updateFirestoreProject(currentUser.uid, projectId, data);
-  };
-
-  // Update user profile fields (e.g. GitHub connection)
-  const handleUpdateUserProfile = async (updates: Partial<UserProfile>) => {
-    if (!currentUser) return;
-    await updateUserProfile(currentUser.uid, updates);
-    setUserProfile((prev) => (prev ? { ...prev, ...updates } : null));
-  };
-
-  // Save updated roadmap to Firestore
-  const handleUpdateRoadmap = async (updated: Roadmap) => {
-    if (!currentUser) return;
-    await saveFirestoreRoadmap(currentUser.uid, updated);
-  };
-
-  // Launch Quiz from note or topic
-  const handleStartQuiz = async (topic: string, content?: string) => {
-    try {
-      const res = await fetch('/api/ai/generate-quiz', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ topic, noteContent: content }),
-      });
-      const data = await res.json();
-      if (data && data.questions) {
-        setActiveQuiz(data);
+    if (currentUser) {
+      try {
+        await addFirestoreProject(currentUser.uid, fullProject);
+      } catch (err) {
+        console.error('Error adding firestore project:', err);
       }
-    } catch (err) {
-      console.error(err);
-      setActiveQuiz({
-        topic: topic || 'Learning Quiz',
-        questions: [
-          {
-            id: 'q1',
-            question: `What is the primary focus of ${topic}?`,
-            options: [
-              'Architecture and core fundamentals',
-              'Static configuration only',
-              'Unused dependencies',
-              'None of the above',
-            ],
-            correctIndex: 0,
-            explanation: `${topic} builds the foundation for scalable, clean code implementations.`,
-          },
-        ],
+    } else {
+      setProjects((prev) => [fullProject, ...prev]);
+    }
+  };
+
+  const handleUpdateProject = async (projectId: string, data: Partial<Project>) => {
+    if (currentUser) {
+      try {
+        await updateFirestoreProject(currentUser.uid, projectId, data);
+      } catch (err) {
+        console.error('Error updating firestore project:', err);
+      }
+    } else {
+      setProjects((prev) =>
+        prev.map((p) => (p.id === projectId ? { ...p, ...data } : p))
+      );
+    }
+  };
+
+  const handleDeleteProject = async (projectId: string) => {
+    if (currentUser) {
+      try {
+        await deleteFirestoreProject(currentUser.uid, projectId);
+      } catch (err) {
+        console.error('Error deleting firestore project:', err);
+      }
+    } else {
+      setProjects((prev) => prev.filter((p) => p.id !== projectId));
+    }
+  };
+
+  const handleBatchAddProjects = async (newProjects: Project[]) => {
+    if (currentUser) {
+      try {
+        await batchSaveFirestoreProjects(currentUser.uid, newProjects);
+      } catch (err) {
+        console.error('Error batch adding firestore projects:', err);
+      }
+    } else {
+      setProjects((prev) => {
+        const existingIds = new Set(prev.map((p) => p.id));
+        const filteredNew = newProjects.filter((p) => !existingIds.has(p.id));
+        return [...filteredNew, ...prev];
       });
     }
   };
 
-  const handleCompleteLesson = async () => {
-    setShowLessonModal(false);
-    if (!currentUser || !roadmap) return;
-    const updatedRoadmap: Roadmap = {
-      ...roadmap,
-      overallProgress: Math.min(100, roadmap.overallProgress + 5),
-    };
-    await saveFirestoreRoadmap(currentUser.uid, updatedRoadmap);
+  const handleToggleProjectTask = async (projectId: string, taskId: string) => {
+    const project = projects.find((p) => p.id === projectId);
+    if (!project) return;
+
+    const updatedTasks = project.tasks.map((t) =>
+      t.id === taskId ? { ...t, done: !t.done } : t
+    );
+    const completedCount = updatedTasks.filter((t) => t.done).length;
+    const progress =
+      updatedTasks.length > 0 ? Math.round((completedCount / updatedTasks.length) * 100) : 0;
+
+    await handleUpdateProject(projectId, { tasks: updatedTasks, progress });
   };
 
-  // Dynamic user profile: 100% data-driven, starts at 0 streak, 0 notes, 0 projects
+  const handleUpdateUserProfile = async (updates: Partial<UserProfile>) => {
+    if (currentUser) {
+      try {
+        await updateUserProfile(currentUser.uid, updates);
+      } catch (err) {
+        console.error('Error updating user profile:', err);
+      }
+    }
+    setUserProfile((prev) => (prev ? { ...prev, ...updates } : null));
+  };
+
+  // Roadmap Handler
+  const handleUpdateRoadmap = async (newRoadmap: Roadmap) => {
+    if (currentUser) {
+      try {
+        await saveFirestoreRoadmap(currentUser.uid, newRoadmap);
+      } catch (err) {
+        console.error('Error saving firestore roadmap:', err);
+      }
+    }
+    setRoadmap(newRoadmap);
+  };
+
+  // Lesson & Quiz Handlers
+  const handleCompleteLesson = () => {
+    setShowLessonModal(false);
+    confetti({ particleCount: 70, spread: 80 });
+  };
+
+  const handleStartQuiz = (topic: string, content?: string) => {
+    const quizTitle = topic || 'Distributed Systems & Clean Architecture';
+    const sampleQuestions = [
+      {
+        id: 'q1',
+        question: `In Clean Architecture, which layer contains the enterprise business rules?`,
+        options: [
+          'The Web / Controller Adapter Layer',
+          'The Domain Entities Core Layer',
+          'The Database Infrastructure Layer',
+          'The Third-Party API Gateway Layer',
+        ],
+        correctIndex: 1,
+        explanation:
+          'In Clean Architecture, Enterprise Business Rules are encapsulated inside the innermost Domain Entities core layer, which has zero dependencies on external frameworks.',
+      },
+      {
+        id: 'q2',
+        question: `How do Java 21 Virtual Threads differ from traditional platform threads?`,
+        options: [
+          'They bypass JVM memory limits by writing directly to disk',
+          'They are mapped 1:1 directly to OS kernel threads',
+          'They are scheduled by the JVM on a carrier pool, unpinning on blocking I/O',
+          'They require reactive Mono/Flux abstractions to execute asynchronously',
+        ],
+        correctIndex: 2,
+        explanation:
+          'Virtual Threads are managed directly by the JVM runtime and multiplexed onto a small pool of carrier OS platform threads, suspending without blocking kernel threads.',
+      },
+    ];
+
+    setActiveQuiz({
+      topic: quizTitle,
+      questions: sampleQuestions,
+    });
+  };
+
   const effectiveUser: UserProfile = userProfile || {
-    name: currentUser?.displayName || 'Learner',
+    name: currentUser?.displayName || 'Prakash (Developer)',
     role: 'Software Developer',
-    email: currentUser?.email || '',
+    email: currentUser?.email || 'prakashgvp.dev03@gmail.com',
     avatarUrl:
       currentUser?.photoURL ||
       'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=150&auto=format&fit=crop&q=80',
-    streak: 0,
+    streak: isGuestMode ? 5 : 0,
     totalNotes: notes.length,
     totalProjects: projects.length,
     weeklyGoals: {
@@ -400,38 +646,44 @@ export default function App() {
       total: tasks.length,
     },
     googleId: currentUser?.uid,
-    isGoogleConnected: true,
+    isGoogleConnected: Boolean(currentUser),
+    githubUsername: 'prakash-dev',
+    githubConnected: true,
   };
 
+  const isAuthenticated = Boolean(currentUser || isGuestMode);
+
   return (
-    <MobileFrame
-      theme={theme}
-      onToggleTheme={toggleTheme}
-      onQuickQuizTrigger={() => handleStartQuiz('Clean Architecture')}
+    <div
+      className={`min-h-screen w-full flex flex-col transition-colors duration-200 ${
+        theme === 'dark' ? 'dark bg-slate-950 text-slate-100' : 'bg-slate-50 text-slate-900'
+      }`}
     >
       {isAuthChecking ? (
-        <div className="min-h-full flex flex-col items-center justify-center p-6 bg-slate-50 dark:bg-slate-900 text-slate-800 dark:text-slate-100">
+        <div className="min-h-screen flex flex-col items-center justify-center p-6 bg-slate-50 dark:bg-slate-950 text-slate-800 dark:text-slate-100">
           <div className="w-16 h-16 rounded-3xl bg-indigo-600 flex items-center justify-center text-white shadow-xl shadow-indigo-500/25 mb-4 animate-bounce">
             <BookOpen className="w-8 h-8" />
           </div>
           <Loader2 className="w-6 h-6 text-indigo-600 animate-spin mb-2" />
-          <p className="text-xs font-semibold text-slate-500">Connecting to Firebase...</p>
+          <p className="text-xs font-semibold text-slate-500">Starting LearnFlow Hub...</p>
         </div>
-      ) : !currentUser ? (
+      ) : !isAuthenticated ? (
         <LoginScreen onLoginSuccess={handleLoginSuccess} />
       ) : (
-        <div className="flex flex-col min-h-full">
-          {/* Flutter Mobile Top App Bar */}
+        <div className="flex flex-col min-h-screen w-full bg-slate-50 dark:bg-slate-950 text-slate-900 dark:text-slate-100 transition-colors">
+          {/* Responsive Header (Top Bar with Desktop Navigation & Mobile Branding) */}
           <Header
             user={effectiveUser}
             theme={theme}
             onToggleTheme={toggleTheme}
             onLogout={handleLogout}
             onResetData={handleResetDatabase}
+            activeTab={activeTab}
+            onChangeTab={(tab) => setActiveTab(tab)}
           />
 
-          {/* Flutter Mobile Tab Views */}
-          <div className="flex-1">
+          {/* Main App Content Container (Responsive max-w-7xl on desktop, full-width on mobile) */}
+          <main className="flex-1 w-full max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4 sm:py-6 pb-24 md:pb-12">
             {activeTab === 'home' && (
               <HomeScreen
                 user={effectiveUser}
@@ -486,9 +738,9 @@ export default function App() {
                 onSaveAsNote={(title, content) => handleSaveNote({ title, content })}
               />
             )}
-          </div>
+          </main>
 
-          {/* Flutter-style Bottom Navigation Bar */}
+          {/* Mobile Bottom Navigation Bar (Hidden on desktop md:) */}
           <Navigation activeTab={activeTab} onChangeTab={(tab) => setActiveTab(tab)} />
 
           {/* Modals & Dialogs */}
@@ -530,6 +782,6 @@ export default function App() {
           )}
         </div>
       )}
-    </MobileFrame>
+    </div>
   );
 }

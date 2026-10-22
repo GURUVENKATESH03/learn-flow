@@ -14,9 +14,10 @@ import {
   Moon,
   LogOut,
   ShieldCheck,
-  Check,
   Smartphone,
+  Check,
 } from 'lucide-react';
+import { TabType } from './Navigation';
 import { ExpoExportModal } from './modals/ExpoExportModal';
 
 interface HeaderProps {
@@ -27,6 +28,8 @@ interface HeaderProps {
   onResetData?: () => void;
   onOpenNotifications?: () => void;
   onOpenProfile?: () => void;
+  activeTab?: TabType;
+  onChangeTab?: (tab: TabType) => void;
 }
 
 export const Header: React.FC<HeaderProps> = ({
@@ -35,6 +38,8 @@ export const Header: React.FC<HeaderProps> = ({
   onToggleTheme,
   onLogout,
   onResetData,
+  activeTab,
+  onChangeTab,
 }) => {
   const [showNotifications, setShowNotifications] = useState(false);
   const [showProfileModal, setShowProfileModal] = useState(false);
@@ -67,60 +72,124 @@ export const Header: React.FC<HeaderProps> = ({
 
   return (
     <>
-      <header className="px-5 pt-3 pb-3 flex items-center justify-between bg-white/95 dark:bg-slate-900/95 backdrop-blur-md sticky top-0 z-30 border-b border-slate-100 dark:border-slate-800 transition-colors duration-200">
-        {/* Brand logo & name */}
-        <div className="flex items-center gap-2.5">
-          <div className="w-8 h-8 rounded-xl bg-gradient-to-br from-indigo-500 to-indigo-700 flex items-center justify-center text-white shadow-xs">
-            <BookOpen className="w-4 h-4 stroke-[2.4]" />
+      <header className="w-full bg-white/95 dark:bg-slate-900/95 backdrop-blur-md sticky top-0 z-30 border-b border-slate-200 dark:border-slate-800 transition-colors duration-200">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-2.5 flex items-center justify-between">
+          {/* Brand logo & name */}
+          <div className="flex items-center gap-3">
+            <div className="w-9 h-9 rounded-xl bg-gradient-to-br from-indigo-500 to-indigo-700 flex items-center justify-center text-white shadow-xs">
+              <BookOpen className="w-4 h-4 stroke-[2.4]" />
+            </div>
+            <div>
+              <span className="text-lg font-black tracking-tight text-slate-900 dark:text-white">
+                Learn<span className="text-indigo-600 dark:text-indigo-400">Flow</span>
+              </span>
+              <span className="hidden lg:inline text-[10px] text-slate-400 dark:text-slate-500 ml-2 font-mono">
+                web & mobile
+              </span>
+            </div>
           </div>
-          <span className="text-lg font-extrabold tracking-tight text-slate-900 dark:text-white">
-            Learn<span className="text-indigo-600 dark:text-indigo-400">Flow</span>
-          </span>
-        </div>
 
-        {/* Right actions: Theme Switcher, Notifications & Avatar */}
-        <div className="flex items-center gap-2">
-          {/* Light / Dark Mode Toggle Button */}
-          <button
-            onClick={onToggleTheme}
-            className="p-2 rounded-xl text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 transition"
-            title={theme === 'dark' ? 'Switch to Light Theme' : 'Switch to Dark Theme'}
-            aria-label="Toggle Theme"
-          >
-            {theme === 'dark' ? (
-              <Sun className="w-4 h-4 text-amber-400 hover:rotate-45 transition-transform" />
-            ) : (
-              <Moon className="w-4 h-4 text-slate-600 hover:-rotate-12 transition-transform" />
-            )}
-          </button>
+          {/* Desktop Primary Navigation Tabs */}
+          {onChangeTab && activeTab && (
+            <nav className="hidden md:flex items-center gap-1 bg-slate-100 dark:bg-slate-800/70 p-1 rounded-2xl border border-slate-200/60 dark:border-slate-700/60">
+              <button
+                onClick={() => onChangeTab('home')}
+                className={`px-3 py-1.5 rounded-xl text-xs font-bold transition flex items-center gap-1.5 ${
+                  activeTab === 'home'
+                    ? 'bg-white dark:bg-slate-700 text-indigo-600 dark:text-indigo-400 shadow-xs'
+                    : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white'
+                }`}
+              >
+                <span>Dashboard</span>
+              </button>
+              <button
+                onClick={() => onChangeTab('notes')}
+                className={`px-3 py-1.5 rounded-xl text-xs font-bold transition flex items-center gap-1.5 ${
+                  activeTab === 'notes'
+                    ? 'bg-white dark:bg-slate-700 text-indigo-600 dark:text-indigo-400 shadow-xs'
+                    : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white'
+                }`}
+              >
+                <span>Notes & Mind Map</span>
+              </button>
+              <button
+                onClick={() => onChangeTab('projects')}
+                className={`px-3 py-1.5 rounded-xl text-xs font-bold transition flex items-center gap-1.5 ${
+                  activeTab === 'projects'
+                    ? 'bg-white dark:bg-slate-700 text-indigo-600 dark:text-indigo-400 shadow-xs'
+                    : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white'
+                }`}
+              >
+                <span>Projects & GitHub</span>
+              </button>
+              <button
+                onClick={() => onChangeTab('roadmap')}
+                className={`px-3 py-1.5 rounded-xl text-xs font-bold transition flex items-center gap-1.5 ${
+                  activeTab === 'roadmap'
+                    ? 'bg-white dark:bg-slate-700 text-indigo-600 dark:text-indigo-400 shadow-xs'
+                    : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white'
+                }`}
+              >
+                <span>AI Roadmap</span>
+              </button>
+              <button
+                onClick={() => onChangeTab('ai')}
+                className={`px-3 py-1.5 rounded-xl text-xs font-bold transition flex items-center gap-1.5 ${
+                  activeTab === 'ai'
+                    ? 'bg-white dark:bg-slate-700 text-indigo-600 dark:text-indigo-400 shadow-xs'
+                    : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white'
+                }`}
+              >
+                <Sparkles className="w-3.5 h-3.5 text-indigo-500" />
+                <span>AI Companion</span>
+              </button>
+            </nav>
+          )}
 
-          {/* Notification bell */}
-          <button
-            onClick={() => {
-              setShowNotifications(true);
-              setHasUnread(false);
-            }}
-            className="relative p-2 rounded-xl text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 transition"
-            aria-label="Notifications"
-          >
-            <Bell className="w-5 h-5" />
-            {hasUnread && (
-              <span className="absolute top-1.5 right-1.5 w-2.5 h-2.5 bg-rose-500 border-2 border-white dark:border-slate-900 rounded-full" />
-            )}
-          </button>
+          {/* Right actions: Theme Switcher, Notifications & Avatar */}
+          <div className="flex items-center gap-2">
+            {/* Light / Dark Mode Toggle Button */}
+            <button
+              onClick={onToggleTheme}
+              className="p-2 rounded-xl text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 transition"
+              title={theme === 'dark' ? 'Switch to Light Theme' : 'Switch to Dark Theme'}
+              aria-label="Toggle Theme"
+            >
+              {theme === 'dark' ? (
+                <Sun className="w-4 h-4 text-amber-400 hover:rotate-45 transition-transform" />
+              ) : (
+                <Moon className="w-4 h-4 text-slate-600 hover:-rotate-12 transition-transform" />
+              )}
+            </button>
 
-          {/* User Avatar */}
-          <button
-            onClick={() => setShowProfileModal(true)}
-            className="relative rounded-full ring-2 ring-indigo-500/30 hover:ring-indigo-500 transition overflow-hidden"
-            aria-label="User profile"
-          >
-            <img
-              src={user.avatarUrl}
-              alt={user.name}
-              className="w-8 h-8 rounded-full object-cover"
-            />
-          </button>
+            {/* Notification bell */}
+            <button
+              onClick={() => {
+                setShowNotifications(true);
+                setHasUnread(false);
+              }}
+              className="relative p-2 rounded-xl text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 transition"
+              aria-label="Notifications"
+            >
+              <Bell className="w-5 h-5" />
+              {hasUnread && (
+                <span className="absolute top-1.5 right-1.5 w-2.5 h-2.5 bg-rose-500 border-2 border-white dark:border-slate-900 rounded-full" />
+              )}
+            </button>
+
+            {/* User Avatar */}
+            <button
+              onClick={() => setShowProfileModal(true)}
+              className="relative rounded-full ring-2 ring-indigo-500/30 hover:ring-indigo-500 transition overflow-hidden cursor-pointer"
+              aria-label="User profile"
+            >
+              <img
+                src={user.avatarUrl}
+                alt={user.name}
+                className="w-8 h-8 rounded-full object-cover"
+              />
+            </button>
+          </div>
         </div>
       </header>
 

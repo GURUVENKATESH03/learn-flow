@@ -97,7 +97,7 @@ export const NotesScreen: React.FC<NotesScreenProps> = ({
               const target = notes.find((n) => n.id === noteId);
               if (target) onOpenNote(target);
             }}
-            height={420}
+            height={520}
           />
         </div>
       ) : (
@@ -131,8 +131,8 @@ export const NotesScreen: React.FC<NotesScreenProps> = ({
         ))}
       </div>
 
-      {/* Notes List */}
-      <div className="space-y-3">
+      {/* Notes List (Responsive Multi-Column Grid) */}
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
         {filteredNotes.length === 0 ? (
           <div className="py-12 text-center space-y-3">
             <BookOpen className="w-8 h-8 text-slate-300 dark:text-slate-600 mx-auto" />

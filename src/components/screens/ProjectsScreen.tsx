@@ -735,8 +735,8 @@ export const ProjectsScreen: React.FC<ProjectsScreenProps> = ({
         </div>
       ) : (
         <>
-          {/* Project Selector Horizontal Scroll */}
-          <div className="flex gap-2 overflow-x-auto pb-1 no-scrollbar">
+          {/* Project Selector Responsive Grid */}
+          <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-2.5">
             {filteredProjects.map((proj) => {
               const isSelected = proj.id === activeProject?.id;
               const prsCount = proj.pullRequests?.length ?? 0;
@@ -744,7 +744,7 @@ export const ProjectsScreen: React.FC<ProjectsScreenProps> = ({
                 <button
                   key={proj.id}
                   onClick={() => setSelectedProjectId(proj.id)}
-                  className={`p-3 rounded-2xl border text-left shrink-0 w-48 transition relative ${
+                  className={`p-3 rounded-2xl border text-left transition relative cursor-pointer ${
                     isSelected
                       ? 'border-indigo-600 bg-indigo-50/70 dark:bg-indigo-950/40 ring-1 ring-indigo-500/40 shadow-xs'
                       : 'border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-800 hover:border-slate-300'
