@@ -16,6 +16,7 @@ import {
   Trash2,
 } from 'lucide-react';
 import { InteractiveKnowledgeGraph } from '../charts/InteractiveKnowledgeGraph';
+import { ConfirmModal } from '../modals/ConfirmModal';
 
 interface NotesScreenProps {
   notes: Note[];
@@ -37,6 +38,7 @@ export const NotesScreen: React.FC<NotesScreenProps> = ({
   const [viewMode, setViewMode] = useState<'list' | 'graph'>('list');
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedTag, setSelectedTag] = useState<string>('All');
+  const [deletingNote, setDeletingNote] = useState<Note | null>(null);
 
   // Extract all unique tags
   const allTags = ['All', ...Array.from(new Set(notes.flatMap((n) => n.tags)))];
@@ -184,11 +186,9 @@ export const NotesScreen: React.FC<NotesScreenProps> = ({
                       type="button"
                       onClick={(e) => {
                         e.stopPropagation();
-                        if (confirm(`Delete note "${note.title}"?`)) {
-                          onDeleteNote(note.id);
-                        }
+                        setDeletingNote(note);
                       }}
-                      className="p-1 rounded-lg text-slate-400 hover:text-rose-600 hover:bg-rose-50 dark:hover:bg-rose-950/40 transition"
+                      className="p-1 rounded-lg text-slate-400 hover:text-rose-600 hover:bg-rose-50 dark:hover:bg-rose-950/40 transition cursor-pointer"
                       title="Delete Note"
                     >
                       <Trash2 className="w-3.5 h-3.5" />
@@ -251,6 +251,23 @@ export const NotesScreen: React.FC<NotesScreenProps> = ({
       </div>
       </>
       )}
+
+      {/* Native-styled in-app Delete Confirmation Modal */}
+      <ConfirmModal
+        isOpen={Boolean(deletingNote)}
+        title="Delete Smart Note"
+        message={deletingNote ? `Are you sure you want to delete "${deletingNote.title}"? This action cannot be undone.` : ''}
+        confirmLabel="Delete Note"
+        cancelLabel="Cancel"
+        variant="danger"
+        onConfirm={() => {
+          if (deletingNote) {
+            onDeleteNote?.(deletingNote.id);
+            setDeletingNote(null);
+          }
+        }}
+        onCancel={() => setDeletingNote(null)}
+      />
     </div>
   );
 };

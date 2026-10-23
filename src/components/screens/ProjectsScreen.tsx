@@ -31,6 +31,7 @@ import {
   CheckSquare,
 } from 'lucide-react';
 import confetti from 'canvas-confetti';
+import { ConfirmModal } from '../modals/ConfirmModal';
 
 interface ProjectsScreenProps {
   projects: Project[];
@@ -61,6 +62,7 @@ export const ProjectsScreen: React.FC<ProjectsScreenProps> = ({
 
   // GitHub Auth & Sync States
   const [showGitHubModal, setShowGitHubModal] = useState(false);
+  const [showDeleteProjectConfirm, setShowDeleteProjectConfirm] = useState(false);
   const [authMethod, setAuthMethod] = useState<'oauth' | 'pat' | 'username'>('oauth');
   const [oauthStatus, setOauthStatus] = useState<{ configured: boolean; clientId: string | null; callbackUrl: string } | null>(null);
   const [gitHubUsername, setGitHubUsername] = useState<string>(() => {
@@ -861,12 +863,8 @@ export const ProjectsScreen: React.FC<ProjectsScreenProps> = ({
                     </a>
                     {onDeleteProject && (
                       <button
-                        onClick={() => {
-                          if (confirm(`Remove "${activeProject.title}" from LearnFlow projects?`)) {
-                            onDeleteProject(activeProject.id);
-                          }
-                        }}
-                        className="p-2 rounded-xl bg-slate-100 dark:bg-slate-700 text-slate-400 hover:text-rose-500 transition"
+                        onClick={() => setShowDeleteProjectConfirm(true)}
+                        className="p-2 rounded-xl bg-slate-100 dark:bg-slate-700 text-slate-400 hover:text-rose-500 transition cursor-pointer"
                         title="Delete project"
                       >
                         <Trash2 className="w-4 h-4" />
@@ -1537,6 +1535,23 @@ export const ProjectsScreen: React.FC<ProjectsScreenProps> = ({
             </form>
           </div>
         </div>
+      )}
+
+      {/* Native-styled in-app Delete Confirmation Modal */}
+      {activeProject && (
+        <ConfirmModal
+          isOpen={showDeleteProjectConfirm}
+          title="Delete Project"
+          message={`Are you sure you want to remove "${activeProject.title}" from LearnFlow?`}
+          confirmLabel="Delete Project"
+          cancelLabel="Cancel"
+          variant="danger"
+          onConfirm={() => {
+            setShowDeleteProjectConfirm(false);
+            onDeleteProject?.(activeProject.id);
+          }}
+          onCancel={() => setShowDeleteProjectConfirm(false)}
+        />
       )}
     </div>
   );

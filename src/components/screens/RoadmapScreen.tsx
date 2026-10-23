@@ -16,6 +16,7 @@ import {
   X,
 } from 'lucide-react';
 import confetti from 'canvas-confetti';
+import { ConfirmModal } from '../modals/ConfirmModal';
 
 interface RoadmapScreenProps {
   roadmap: Roadmap | null;
@@ -44,7 +45,7 @@ const generateFallbackCurriculum = (
           phase: 'Phase 1',
           title: 'Spring Boot 3 Core & RESTful APIs',
           status: 'In Progress',
-          progress: 35,
+          progress: 0,
           weeks: `Weeks 1-${w1}`,
           tasks: [
             'IoC container, Dependency Injection & Spring component life cycle',
@@ -100,7 +101,7 @@ const generateFallbackCurriculum = (
           phase: 'Phase 1',
           title: 'Broker Architecture & Partitions',
           status: 'In Progress',
-          progress: 30,
+          progress: 0,
           weeks: `Weeks 1-${w1}`,
           tasks: [
             'Commit log storage, partition allocation, leadership & replica synchronization',
@@ -156,7 +157,7 @@ const generateFallbackCurriculum = (
           phase: 'Phase 1',
           title: 'Containerization & Image Optimization',
           status: 'In Progress',
-          progress: 35,
+          progress: 0,
           weeks: `Weeks 1-${w1}`,
           tasks: [
             'Multi-stage Dockerfile architecture with rootless distroless base images',
@@ -212,7 +213,7 @@ const generateFallbackCurriculum = (
         phase: 'Phase 1',
         title: `${cleanTitle} Foundations & Core Tooling`,
         status: 'In Progress',
-        progress: 35,
+        progress: 0,
         weeks: `Weeks 1-${w1}`,
         tasks: [
           `Setup development environment & essential toolchains for ${cleanTitle}`,
@@ -269,6 +270,7 @@ export const RoadmapScreen: React.FC<RoadmapScreenProps> = ({
   const [expandedMilestone, setExpandedMilestone] = useState<number | null>(1);
   const [showGenerateModal, setShowGenerateModal] = useState(false);
   const [showEditModal, setShowEditModal] = useState(false);
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [editTitle, setEditTitle] = useState('');
   const [editRoleTrack, setEditRoleTrack] = useState('');
   const [targetTopic, setTargetTopic] = useState('');
@@ -313,19 +315,26 @@ export const RoadmapScreen: React.FC<RoadmapScreenProps> = ({
       }
 
       const totalWeeks = parseInt(timeframe, 10) || 8;
+      // Newly created roadmap always begins fresh with 0% progress and 0% per milestone
+      const freshMilestones: RoadmapMilestone[] = (curriculumData.milestones || []).map((m, idx) => ({
+        ...m,
+        progress: 0,
+        status: idx === 0 ? ('In Progress' as const) : ('Upcoming' as const),
+      }));
+
       const newRoadmap: Roadmap = {
         id: `rm-${Date.now()}`,
         title: curriculumData.title || `${topic} Mastery Track`,
         roleTrack: topic,
         currentWeek: 1,
         totalWeeks,
-        overallProgress: 15,
-        milestones: curriculumData.milestones,
+        overallProgress: 0,
+        milestones: freshMilestones,
       };
 
       onUpdateRoadmap(newRoadmap);
       confetti({ particleCount: 70, spread: 60, origin: { y: 0.7 } });
-      onShowToast?.(`Generated "${newRoadmap.title}" with 4 comprehensive milestones!`, 'success', 'Roadmap Created');
+      onShowToast?.(`Generated "${newRoadmap.title}" starting fresh at 0% progress!`, 'success', 'Roadmap Created');
       setShowGenerateModal(false);
       setTargetTopic('');
     } catch (err: any) {
@@ -402,12 +411,8 @@ export const RoadmapScreen: React.FC<RoadmapScreenProps> = ({
                 {onDeleteRoadmap && (
                   <button
                     type="button"
-                    onClick={() => {
-                      if (confirm(`Delete learning roadmap "${roadmap.title}"? You can generate a new one anytime.`)) {
-                        onDeleteRoadmap();
-                      }
-                    }}
-                    className="px-2 py-1 rounded-lg border border-rose-200 dark:border-rose-900 hover:bg-rose-50 dark:hover:bg-rose-950/40 text-rose-600 dark:text-rose-400 text-xs font-semibold transition flex items-center gap-1"
+                    onClick={() => setShowDeleteConfirm(true)}
+                    className="px-2 py-1 rounded-lg border border-rose-200 dark:border-rose-900 hover:bg-rose-50 dark:hover:bg-rose-950/40 text-rose-600 dark:text-rose-400 text-xs font-semibold transition flex items-center gap-1 cursor-pointer"
                     title="Delete Roadmap"
                   >
                     <Trash2 className="w-3.5 h-3.5" />
@@ -718,6 +723,23 @@ export const RoadmapScreen: React.FC<RoadmapScreenProps> = ({
             </form>
           </div>
         </div>
+      )}
+
+      {/* Native-styled in-app Delete Confirmation Modal */}
+      {roadmap && (
+        <ConfirmModal
+          isOpen={showDeleteConfirm}
+          title="Delete Learning Roadmap"
+          message={`Are you sure you want to delete "${roadmap.title}"? You can generate a new personalized learning roadmap anytime.`}
+          confirmLabel="Delete Roadmap"
+          cancelLabel="Cancel"
+          variant="danger"
+          onConfirm={() => {
+            setShowDeleteConfirm(false);
+            onDeleteRoadmap?.();
+          }}
+          onCancel={() => setShowDeleteConfirm(false)}
+        />
       )}
     </div>
   );

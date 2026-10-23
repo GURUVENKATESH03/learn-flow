@@ -672,14 +672,16 @@ export default function App() {
   const isAuthenticated = Boolean(currentUser || isGuestMode);
 
   // Mobile Gesture Navigation:
-  // User spec:
-  // Swiping right: advances Dashboard (home) -> Notes -> Projects -> Roadmap -> AI
-  // Swiping left: returns backwards AI -> Roadmap -> Projects -> Notes -> Dashboard (home)
+  // Tab order: Home (Dashboard) -> Notes -> Projects -> Roadmap -> AI
+  // Standard carousel gesture mapping:
+  // - Swipe Left (finger moves right-to-left <-): advances to next tab (Home -> Notes -> Projects -> Roadmap -> AI)
+  // - Swipe Right (finger moves left-to-right ->): returns to previous tab (AI -> Roadmap -> Projects -> Notes -> Home)
   const touchStateRef = useRef<{
     startX: number;
     startY: number;
     startTime: number;
     isVerticalScroll: boolean;
+    isHorizontalSwipe: boolean;
   } | null>(null);
 
   const [swipeFeedback, setSwipeFeedback] = useState<{
@@ -726,6 +728,7 @@ export default function App() {
       startY: e.touches[0].clientY,
       startTime: Date.now(),
       isVerticalScroll: false,
+      isHorizontalSwipe: false,
     };
   };
 
@@ -736,12 +739,17 @@ export default function App() {
     const currentY = e.touches[0].clientY;
     const deltaX = currentX - touchStateRef.current.startX;
     const deltaY = currentY - touchStateRef.current.startY;
+    const absX = Math.abs(deltaX);
+    const absY = Math.abs(deltaY);
 
-    // Early vertical scroll lockout:
-    // If finger moves more than 16px vertically and vertical exceeds horizontal travel,
-    // lock this gesture as page scroll so it will NEVER trigger a tab switch.
-    if (!touchStateRef.current.isVerticalScroll) {
-      if (Math.abs(deltaY) > 16 && Math.abs(deltaY) > Math.abs(deltaX) * 1.25) {
+    // Prioritize horizontal gestures:
+    // If horizontal motion is established early (absX > 12 and absX >= absY),
+    // prioritize horizontal swipe navigation.
+    // Only lock out as vertical scroll if vertical movement strongly dominates (> 22px and > absX * 1.5).
+    if (!touchStateRef.current.isVerticalScroll && !touchStateRef.current.isHorizontalSwipe) {
+      if (absX > 12 && absX >= absY) {
+        touchStateRef.current.isHorizontalSwipe = true;
+      } else if (absY > 22 && absY > absX * 1.5) {
         touchStateRef.current.isVerticalScroll = true;
       }
     }
@@ -759,13 +767,15 @@ export default function App() {
     const touchEnd = e.changedTouches[0];
     const deltaX = touchEnd.clientX - state.startX;
     const deltaY = touchEnd.clientY - state.startY;
+    const absX = Math.abs(deltaX);
+    const absY = Math.abs(deltaY);
     const deltaTime = Date.now() - state.startTime;
 
-    // Minimum swipe threshold:
-    // 1. Min 60px horizontal travel
-    // 2. Strong horizontal intent: deltaX must be > 1.8x deltaY
-    // 3. Quick flick under 550ms
-    if (Math.abs(deltaX) >= 60 && Math.abs(deltaX) > Math.abs(deltaY) * 1.8 && deltaTime < 550) {
+    // Swipe validation criteria:
+    // 1. Min 50px horizontal travel
+    // 2. Horizontal intent: absX > absY * 1.25 or established as horizontal swipe early
+    // 3. Fluid swipe completed within 650ms
+    if (absX >= 50 && (state.isHorizontalSwipe || absX > absY * 1.25) && deltaTime < 650) {
       const tabOrder: TabType[] = ['home', 'notes', 'projects', 'roadmap', 'ai'];
       const tabLabels: Record<TabType, string> = {
         home: 'Dashboard',
@@ -776,26 +786,26 @@ export default function App() {
       };
       const currentIndex = tabOrder.indexOf(activeTab);
 
-      if (deltaX > 0) {
-        // SWIPE RIGHT (finger moving left-to-right ->):
-        // Dashboard -> Notes -> Projects -> Roadmap -> AI
+      if (deltaX < 0) {
+        // SWIPE LEFT (finger drags right-to-left <-):
+        // Pulls next screen into view: Home (Dashboard) -> Notes -> Projects -> Roadmap -> AI
         if (currentIndex < tabOrder.length - 1) {
           const nextTab = tabOrder[currentIndex + 1];
           setActiveTab(nextTab);
           setSwipeFeedback({
             tabName: tabLabels[nextTab],
-            direction: 'right',
+            direction: 'left',
           });
         }
-      } else {
-        // SWIPE LEFT (finger moving right-to-left <-):
-        // AI -> Roadmap -> Projects -> Notes -> Dashboard
+      } else if (deltaX > 0) {
+        // SWIPE RIGHT (finger drags left-to-right ->):
+        // Pulls previous screen into view: AI -> Roadmap -> Projects -> Notes -> Home (Dashboard)
         if (currentIndex > 0) {
           const prevTab = tabOrder[currentIndex - 1];
           setActiveTab(prevTab);
           setSwipeFeedback({
             tabName: tabLabels[prevTab],
-            direction: 'left',
+            direction: 'right',
           });
         }
       }
