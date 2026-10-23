@@ -564,7 +564,7 @@ export const ProjectsScreen: React.FC<ProjectsScreenProps> = ({
   });
 
   return (
-    <div className="space-y-4 px-5 pt-2 pb-24 animate-in fade-in duration-200">
+    <div className="w-full space-y-4 pb-6 animate-in fade-in duration-200">
       {/* Header */}
       <div className="flex items-center justify-between">
         <div>

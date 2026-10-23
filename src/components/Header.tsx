@@ -21,6 +21,11 @@ import {
   Palette,
   Database,
   Trash2,
+  Camera,
+  UploadCloud,
+  RefreshCw,
+  Edit3,
+  Image as ImageIcon,
 } from 'lucide-react';
 import { TabType } from './Navigation';
 import { ExpoExportModal } from './modals/ExpoExportModal';
@@ -31,6 +36,7 @@ interface HeaderProps {
   onToggleTheme: () => void;
   onLogout?: () => void;
   onResetData?: () => void;
+  onUpdateAvatar?: (avatarUrl: string) => void;
   onOpenNotifications?: () => void;
   onOpenProfile?: () => void;
   activeTab?: TabType;
@@ -43,6 +49,7 @@ export const Header: React.FC<HeaderProps> = ({
   onToggleTheme,
   onLogout,
   onResetData,
+  onUpdateAvatar,
   activeTab,
   onChangeTab,
 }) => {
@@ -51,6 +58,47 @@ export const Header: React.FC<HeaderProps> = ({
   const [showExpoModal, setShowExpoModal] = useState(false);
   const [hasUnread, setHasUnread] = useState(true);
   const [openAccordion, setOpenAccordion] = useState<string | null>('profile');
+  const [isEditingAvatar, setIsEditingAvatar] = useState(false);
+  const [customAvatarUrl, setCustomAvatarUrl] = useState('');
+
+  const PRESET_AVATARS = [
+    { label: 'Developer', url: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=150&auto=format&fit=crop&q=80' },
+    { label: 'Tech Lead', url: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=150&auto=format&fit=crop&q=80' },
+    { label: 'Architect', url: 'https://images.unsplash.com/photo-1494790108377-be9c29b29330?w=150&auto=format&fit=crop&q=80' },
+    { label: 'Full Stack', url: 'https://images.unsplash.com/photo-1500648767791-00dcc994a43e?w=150&auto=format&fit=crop&q=80' },
+    { label: 'Bot Coder', url: 'https://api.dicebear.com/7.x/bottts/svg?seed=LearnFlow' },
+    { label: 'Pixel Dev', url: 'https://api.dicebear.com/7.x/pixel-art/svg?seed=Prakash' },
+    { label: 'Adventurer', url: 'https://api.dicebear.com/7.x/adventurer/svg?seed=Developer' },
+    { label: 'Lorelei', url: 'https://api.dicebear.com/7.x/lorelei/svg?seed=Guru' },
+  ];
+
+  const handleSelectAvatar = (url: string) => {
+    onUpdateAvatar?.(url);
+  };
+
+  const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      if (file.size > 3 * 1024 * 1024) {
+        alert('Please select an image under 3MB');
+        return;
+      }
+      const reader = new FileReader();
+      reader.onload = () => {
+        if (typeof reader.result === 'string') {
+          onUpdateAvatar?.(reader.result);
+        }
+      };
+      reader.readAsDataURL(file);
+    }
+  };
+
+  const handleRandomAvatar = () => {
+    const seeds = ['Zenith', 'Matrix', 'Nexus', 'Quantum', 'Byte', 'Vortex', 'Apex', 'Falcon', 'DevFlow', 'Prakash'];
+    const randomSeed = seeds[Math.floor(Math.random() * seeds.length)] + '-' + Date.now();
+    const newAvatar = `https://api.dicebear.com/7.x/bottts/svg?seed=${randomSeed}`;
+    onUpdateAvatar?.(newAvatar);
+  };
 
   const toggleAccordion = (section: string) => {
     setOpenAccordion((prev) => (prev === section ? null : section));
@@ -282,18 +330,130 @@ export const Header: React.FC<HeaderProps> = ({
                 </button>
 
                 {openAccordion === 'profile' && (
-                  <div className="p-3.5 pt-0 space-y-3.5 border-t border-slate-100 dark:border-slate-800">
-                    <div className="flex items-center gap-3 pt-3">
-                      <img
-                        src={user.avatarUrl}
-                        alt={user.name}
-                        className="w-12 h-12 rounded-full object-cover ring-2 ring-indigo-500"
-                      />
-                      <div>
-                        <h4 className="text-sm font-bold text-slate-900 dark:text-white">{user.name}</h4>
-                        <p className="text-xs text-indigo-600 dark:text-indigo-400 font-semibold">{user.role}</p>
-                        <p className="text-[11px] text-slate-400">{user.email}</p>
+                  <div className="p-4 pt-1 space-y-3">
+                    <div className="space-y-3">
+                      <div className="flex items-center justify-between">
+                        <div className="flex items-center gap-3">
+                          <div className="relative group">
+                            <img
+                              src={user.avatarUrl}
+                              alt={user.name}
+                              className="w-14 h-14 rounded-full object-cover ring-2 ring-indigo-500 shadow-md"
+                            />
+                            <button
+                              type="button"
+                              onClick={() => setIsEditingAvatar(!isEditingAvatar)}
+                              className="absolute -bottom-1 -right-1 p-1.5 rounded-full bg-indigo-600 hover:bg-indigo-700 text-white shadow-sm transition cursor-pointer"
+                              title="Change avatar"
+                            >
+                              <Camera className="w-3.5 h-3.5" />
+                            </button>
+                          </div>
+                          <div>
+                            <h4 className="text-sm font-bold text-slate-900 dark:text-white">{user.name}</h4>
+                            <p className="text-xs text-indigo-600 dark:text-indigo-400 font-semibold">{user.role}</p>
+                            <p className="text-[11px] text-slate-400">{user.email}</p>
+                          </div>
+                        </div>
+
+                        <button
+                          type="button"
+                          onClick={() => setIsEditingAvatar(!isEditingAvatar)}
+                          className="px-3 py-1.5 rounded-xl border border-indigo-200 dark:border-indigo-800 bg-indigo-50/70 dark:bg-indigo-950/40 text-[11px] font-bold text-indigo-700 dark:text-indigo-300 hover:bg-indigo-100 transition flex items-center gap-1.5 cursor-pointer"
+                        >
+                          <Edit3 className="w-3 h-3" />
+                          <span>{isEditingAvatar ? 'Done' : 'Change Avatar'}</span>
+                        </button>
                       </div>
+
+                      {/* Expandable Avatar Customizer */}
+                      {isEditingAvatar && (
+                        <div className="p-3.5 rounded-2xl bg-white dark:bg-slate-800/90 border border-indigo-100 dark:border-indigo-900/60 shadow-xs space-y-3 animate-in fade-in">
+                          <div className="flex items-center justify-between">
+                            <span className="text-xs font-bold text-slate-800 dark:text-slate-200 flex items-center gap-1.5">
+                              <Camera className="w-3.5 h-3.5 text-indigo-500" />
+                              Choose Profile Avatar
+                            </span>
+                            <button
+                              type="button"
+                              onClick={handleRandomAvatar}
+                              className="text-[11px] font-semibold text-indigo-600 dark:text-indigo-400 hover:underline flex items-center gap-1 cursor-pointer"
+                            >
+                              <RefreshCw className="w-3 h-3" /> Randomize
+                            </button>
+                          </div>
+
+                          {/* Presets Grid */}
+                          <div className="grid grid-cols-4 gap-2">
+                            {PRESET_AVATARS.map((preset, idx) => {
+                              const isSelected = user.avatarUrl === preset.url;
+                              return (
+                                <button
+                                  key={idx}
+                                  type="button"
+                                  onClick={() => handleSelectAvatar(preset.url)}
+                                  className={`relative rounded-xl p-1 border transition flex flex-col items-center cursor-pointer ${
+                                    isSelected
+                                      ? 'border-indigo-600 bg-indigo-50 dark:bg-indigo-950/80 ring-2 ring-indigo-400'
+                                      : 'border-slate-200 dark:border-slate-700 hover:border-indigo-300'
+                                  }`}
+                                >
+                                  <img
+                                    src={preset.url}
+                                    alt={preset.label}
+                                    className="w-10 h-10 rounded-lg object-cover"
+                                  />
+                                  <span className="text-[9px] font-medium text-slate-500 dark:text-slate-400 truncate w-full text-center mt-1">
+                                    {preset.label}
+                                  </span>
+                                  {isSelected && (
+                                    <span className="absolute top-1 right-1 w-3.5 h-3.5 rounded-full bg-indigo-600 text-white flex items-center justify-center">
+                                      <Check className="w-2.5 h-2.5" />
+                                    </span>
+                                  )}
+                                </button>
+                              );
+                            })}
+                          </div>
+
+                          {/* Actions: Upload Image File or Custom URL */}
+                          <div className="flex flex-col sm:flex-row gap-2 pt-1 border-t border-slate-100 dark:border-slate-700/60">
+                            <label className="flex-1 py-2 px-3 rounded-xl border border-dashed border-indigo-300 dark:border-indigo-800 bg-indigo-50/50 dark:bg-indigo-950/30 text-indigo-700 dark:text-indigo-300 text-xs font-semibold flex items-center justify-center gap-1.5 cursor-pointer hover:bg-indigo-100 transition">
+                              <UploadCloud className="w-3.5 h-3.5" />
+                              <span>Upload Photo File</span>
+                              <input
+                                type="file"
+                                accept="image/*"
+                                onChange={handleFileUpload}
+                                className="hidden"
+                              />
+                            </label>
+
+                            <div className="flex-1 flex gap-1">
+                              <input
+                                type="url"
+                                placeholder="Paste image URL..."
+                                value={customAvatarUrl}
+                                onChange={(e) => setCustomAvatarUrl(e.target.value)}
+                                className="flex-1 px-2.5 py-1.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-900 text-xs text-slate-900 dark:text-white placeholder:text-slate-400 focus:outline-none focus:ring-1 focus:ring-indigo-500"
+                              />
+                              <button
+                                type="button"
+                                disabled={!customAvatarUrl.trim()}
+                                onClick={() => {
+                                  if (customAvatarUrl.trim()) {
+                                    handleSelectAvatar(customAvatarUrl.trim());
+                                    setCustomAvatarUrl('');
+                                  }
+                                }}
+                                className="px-2.5 py-1.5 rounded-xl bg-indigo-600 text-white text-xs font-bold disabled:opacity-40 hover:bg-indigo-700 transition"
+                              >
+                                Set
+                              </button>
+                            </div>
+                          </div>
+                        </div>
+                      )}
                     </div>
 
                     <div className="grid grid-cols-2 gap-2.5">

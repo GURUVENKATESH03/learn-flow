@@ -12,6 +12,8 @@ import {
   Filter,
   Network,
   List,
+  Edit3,
+  Trash2,
 } from 'lucide-react';
 import { InteractiveKnowledgeGraph } from '../charts/InteractiveKnowledgeGraph';
 
@@ -20,6 +22,8 @@ interface NotesScreenProps {
   onOpenNote: (note: Note) => void;
   onOpenNewNote: () => void;
   onStartQuiz: (topic: string, content: string) => void;
+  onEditNote?: (note: Note) => void;
+  onDeleteNote?: (noteId: string) => void;
 }
 
 export const NotesScreen: React.FC<NotesScreenProps> = ({
@@ -27,6 +31,8 @@ export const NotesScreen: React.FC<NotesScreenProps> = ({
   onOpenNote,
   onOpenNewNote,
   onStartQuiz,
+  onEditNote,
+  onDeleteNote,
 }) => {
   const [viewMode, setViewMode] = useState<'list' | 'graph'>('list');
   const [searchQuery, setSearchQuery] = useState('');
@@ -46,7 +52,7 @@ export const NotesScreen: React.FC<NotesScreenProps> = ({
   });
 
   return (
-    <div className="space-y-4 px-5 pt-2 pb-24 animate-in fade-in duration-200">
+    <div className="w-full space-y-4 pb-6 animate-in fade-in duration-200">
       {/* Top Title & Add Button */}
       <div className="flex items-center justify-between">
         <div>
@@ -115,7 +121,7 @@ export const NotesScreen: React.FC<NotesScreenProps> = ({
       </div>
 
       {/* Tag Filters (Horizontal scrolling pills) */}
-      <div className="flex gap-1.5 overflow-x-auto pb-1 no-scrollbar">
+      <div data-no-swipe="true" className="flex gap-1.5 overflow-x-auto pb-1 no-scrollbar">
         {allTags.map((tag) => (
           <button
             key={tag}
@@ -153,10 +159,42 @@ export const NotesScreen: React.FC<NotesScreenProps> = ({
               className="cursor-pointer p-4 rounded-2xl bg-white dark:bg-slate-800/80 border border-slate-100 dark:border-slate-800 hover:border-indigo-200 dark:hover:border-indigo-800 transition shadow-2xs space-y-2.5 group"
             >
               <div className="flex items-start justify-between gap-2">
-                <h3 className="text-sm font-bold text-slate-900 dark:text-white group-hover:text-indigo-600 dark:group-hover:text-indigo-400 transition leading-snug">
+                <h3 className="text-sm font-bold text-slate-900 dark:text-white group-hover:text-indigo-600 dark:group-hover:text-indigo-400 transition leading-snug flex-1">
                   {note.title}
                 </h3>
-                <span className="text-[10px] text-slate-400 whitespace-nowrap">{note.timeAgo}</span>
+                <div className="flex items-center gap-1 shrink-0">
+                  <span className="text-[10px] text-slate-400 mr-1">{note.timeAgo}</span>
+                  <button
+                    type="button"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      if (onEditNote) {
+                        onEditNote(note);
+                      } else {
+                        onOpenNote(note);
+                      }
+                    }}
+                    className="p-1 rounded-lg text-slate-400 hover:text-indigo-600 hover:bg-slate-100 dark:hover:bg-slate-700 transition"
+                    title="Edit Note"
+                  >
+                    <Edit3 className="w-3.5 h-3.5" />
+                  </button>
+                  {onDeleteNote && (
+                    <button
+                      type="button"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        if (confirm(`Delete note "${note.title}"?`)) {
+                          onDeleteNote(note.id);
+                        }
+                      }}
+                      className="p-1 rounded-lg text-slate-400 hover:text-rose-600 hover:bg-rose-50 dark:hover:bg-rose-950/40 transition"
+                      title="Delete Note"
+                    >
+                      <Trash2 className="w-3.5 h-3.5" />
+                    </button>
+                  )}
+                </div>
               </div>
 
               {note.imageUrl && (

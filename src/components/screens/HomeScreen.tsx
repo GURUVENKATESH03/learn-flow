@@ -80,7 +80,7 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({
   ) || roadmap?.milestones?.[0];
 
   return (
-    <div className="space-y-6 pb-20 animate-in fade-in duration-300">
+    <div className="space-y-5 pb-6 animate-in fade-in duration-300">
       {/* 1. Greeting Section */}
       <section className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
         <div>

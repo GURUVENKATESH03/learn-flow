@@ -127,7 +127,7 @@ export const AIScreen: React.FC<AIScreenProps> = ({ notes, onStartQuiz, onSaveAs
   };
 
   return (
-    <div className="flex flex-col h-[calc(100vh-140px)] px-4 pt-2 pb-20 animate-in fade-in duration-200">
+    <div className="flex flex-col h-[calc(100dvh-130px)] md:h-[calc(100vh-140px)] w-full pb-1 animate-in fade-in duration-200">
       {/* Header */}
       <div className="flex items-center justify-between pb-3 border-b border-slate-100 dark:border-slate-800 shrink-0">
         <div className="flex items-center gap-2">
@@ -135,8 +135,14 @@ export const AIScreen: React.FC<AIScreenProps> = ({ notes, onStartQuiz, onSaveAs
             <Bot className="w-4 h-4" />
           </div>
           <div>
-            <h1 className="text-base font-extrabold text-slate-900 dark:text-white">AI Explorer</h1>
-            <p className="text-[11px] text-slate-400">Ask about notes, projects, or concepts</p>
+            <div className="flex items-center gap-2">
+              <h1 className="text-base font-extrabold text-slate-900 dark:text-white">AI Explorer</h1>
+              <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-emerald-50 dark:bg-emerald-950/60 border border-emerald-200 dark:border-emerald-800 text-[9px] font-bold text-emerald-700 dark:text-emerald-300">
+                <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
+                Gemini 3.8 Flash
+              </span>
+            </div>
+            <p className="text-[11px] text-slate-400">Real-time technical mentor & code assistant</p>
           </div>
         </div>
         <button
@@ -148,7 +154,7 @@ export const AIScreen: React.FC<AIScreenProps> = ({ notes, onStartQuiz, onSaveAs
       </div>
 
       {/* Suggestion Chips */}
-      <div className="py-2.5 flex gap-1.5 overflow-x-auto no-scrollbar shrink-0">
+      <div data-no-swipe="true" className="py-2.5 flex gap-1.5 overflow-x-auto no-scrollbar shrink-0">
         {suggestionPrompts.map((p, idx) => (
           <button
             key={idx}
@@ -235,31 +241,34 @@ export const AIScreen: React.FC<AIScreenProps> = ({ notes, onStartQuiz, onSaveAs
       </div>
 
       {/* Input Bar */}
-      <form
-        onSubmit={(e) => {
-          e.preventDefault();
-          handleSend(input);
-        }}
-        className="pt-2 shrink-0"
-      >
-        <div className="relative flex items-center">
-          <input
-            type="text"
-            placeholder="Ask about Kafka, Spring Boot, or tests..."
-            value={input}
-            onChange={(e) => setInput(e.target.value)}
-            disabled={loading}
-            className="w-full pl-4 pr-12 py-3 rounded-2xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-800 text-xs text-slate-900 dark:text-white placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-indigo-500 shadow-2xs"
-          />
-          <button
-            type="submit"
-            disabled={!input.trim() || loading}
-            className="absolute right-1.5 p-2 rounded-xl bg-indigo-600 text-white disabled:opacity-40 hover:bg-indigo-700 transition"
-          >
-            <Send className="w-4 h-4" />
-          </button>
-        </div>
-      </form>
+      <div className="pt-2 pb-1 shrink-0 w-full bg-slate-50/90 dark:bg-slate-950/90 backdrop-blur-md sticky bottom-0 z-10">
+        <form
+          onSubmit={(e) => {
+            e.preventDefault();
+            handleSend(input);
+          }}
+          className="w-full"
+        >
+          <div className="relative flex items-center">
+            <input
+              type="text"
+              placeholder="Ask Gemini about Java, Spring Boot, Kafka, SQL, or architecture..."
+              value={input}
+              onChange={(e) => setInput(e.target.value)}
+              disabled={loading}
+              className="w-full pl-4 pr-12 py-3 rounded-2xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 text-xs text-slate-900 dark:text-white placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-indigo-500 shadow-sm transition"
+            />
+            <button
+              type="submit"
+              disabled={!input.trim() || loading}
+              className="absolute right-1.5 p-2 rounded-xl bg-indigo-600 text-white disabled:opacity-40 hover:bg-indigo-700 transition"
+              title="Send message to Gemini"
+            >
+              <Send className="w-4 h-4" />
+            </button>
+          </div>
+        </form>
+      </div>
     </div>
   );
 };

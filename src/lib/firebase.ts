@@ -351,6 +351,19 @@ export async function deleteFirestoreNote(userId: string, noteId: string) {
   }
 }
 
+export async function updateFirestoreNote(userId: string, noteId: string, updates: Partial<Note>) {
+  const path = `users/${userId}/notes/${noteId}`;
+  try {
+    const cleanUpdates = sanitizeForFirestore(updates);
+    await updateDoc(doc(db, 'users', userId, 'notes', noteId), {
+      ...cleanUpdates,
+      updatedAt: new Date().toISOString(),
+    });
+  } catch (error) {
+    handleFirestoreError(error, OperationType.UPDATE, path);
+  }
+}
+
 export async function addFirestoreTask(userId: string, task: TaskItem) {
   const path = `users/${userId}/tasks/${task.id}`;
   try {
@@ -471,5 +484,14 @@ export async function saveFirestoreRoadmap(userId: string, roadmap: Roadmap) {
   } catch (error) {
     handleFirestoreError(error, OperationType.WRITE, path);
     throw error;
+  }
+}
+
+export async function deleteFirestoreRoadmap(userId: string, roadmapId: string) {
+  const path = `users/${userId}/roadmaps/${roadmapId}`;
+  try {
+    await deleteDoc(doc(db, 'users', userId, 'roadmaps', roadmapId));
+  } catch (error) {
+    handleFirestoreError(error, OperationType.DELETE, path);
   }
 }

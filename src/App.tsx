@@ -30,6 +30,7 @@ import {
   subscribeToProjects,
   subscribeToRoadmaps,
   addFirestoreNote,
+  updateFirestoreNote,
   deleteFirestoreNote,
   addFirestoreTask,
   toggleFirestoreTask,
@@ -40,18 +41,30 @@ import {
   batchSaveFirestoreProjects,
   updateUserProfile,
   saveFirestoreRoadmap,
+  deleteFirestoreRoadmap,
 } from './lib/firebase';
 
 import { Note, TaskItem, Project, Roadmap, Quiz, UserProfile } from './types';
 import confetti from 'canvas-confetti';
-import { BookOpen, Loader2 } from 'lucide-react';
+import { BookOpen, Loader2, ArrowLeft, ArrowRight, FolderGit2, Compass, Bot, Home } from 'lucide-react';
 import { Toast, ToastMessage } from './components/common/Toast';
 
 export default function App() {
   const [currentUser, setCurrentUser] = useState<FirebaseUser | null>(null);
-  const [userProfile, setUserProfile] = useState<UserProfile | null>(null);
+  const [userProfile, setUserProfile] = useState<UserProfile | null>(() => {
+    try {
+      const cached = localStorage.getItem('learnflow_user_profile');
+      return cached ? JSON.parse(cached) : null;
+    } catch {
+      return null;
+    }
+  });
   const [isGuestMode, setIsGuestMode] = useState<boolean>(() => {
-    return localStorage.getItem('learnflow_guest_mode') === 'true';
+    return (
+      localStorage.getItem('learnflow_guest_mode') === 'true' ||
+      Boolean(localStorage.getItem('learnflow_user_profile')) ||
+      Boolean(localStorage.getItem('learnflow_cached_notes'))
+    );
   });
   const [isAuthChecking, setIsAuthChecking] = useState<boolean>(true);
 
@@ -74,18 +87,39 @@ export default function App() {
     return (localStorage.getItem('learnflow_theme') as 'light' | 'dark') || 'light';
   });
 
-  // Zero-hardcoding live states with local backup for guest mode
+  // Zero-hardcoding live states with local backup for guest mode and offline persistence
   const [notes, setNotes] = useState<Note[]>(() => {
     try {
-      const cached = localStorage.getItem('learnflow_cached_notes');
+      const cached = localStorage.getItem('learnflow_notes') || localStorage.getItem('learnflow_cached_notes');
       return cached ? JSON.parse(cached) : [];
     } catch {
       return [];
     }
   });
-  const [tasks, setTasks] = useState<TaskItem[]>([]);
-  const [projects, setProjects] = useState<Project[]>([]);
-  const [roadmap, setRoadmap] = useState<Roadmap | null>(null);
+  const [tasks, setTasks] = useState<TaskItem[]>(() => {
+    try {
+      const cached = localStorage.getItem('learnflow_tasks');
+      return cached ? JSON.parse(cached) : [];
+    } catch {
+      return [];
+    }
+  });
+  const [projects, setProjects] = useState<Project[]>(() => {
+    try {
+      const cached = localStorage.getItem('learnflow_projects');
+      return cached ? JSON.parse(cached) : [];
+    } catch {
+      return [];
+    }
+  });
+  const [roadmap, setRoadmap] = useState<Roadmap | null>(() => {
+    try {
+      const cached = localStorage.getItem('learnflow_roadmap');
+      return cached ? JSON.parse(cached) : null;
+    } catch {
+      return null;
+    }
+  });
 
   const [activeTab, setActiveTab] = useState<TabType>('home');
   const [selectedNote, setSelectedNote] = useState<Note | null>(null);
@@ -108,29 +142,58 @@ export default function App() {
     }
   }, [theme]);
 
+  // Continuous persistence to localStorage so no data is ever lost across reloads/deployments
+  useEffect(() => {
+    try {
+      localStorage.setItem('learnflow_cached_notes', JSON.stringify(notes));
+      localStorage.setItem('learnflow_notes', JSON.stringify(notes));
+    } catch (e) {}
+  }, [notes]);
+
+  useEffect(() => {
+    try {
+      localStorage.setItem('learnflow_tasks', JSON.stringify(tasks));
+    } catch (e) {}
+  }, [tasks]);
+
+  useEffect(() => {
+    try {
+      localStorage.setItem('learnflow_projects', JSON.stringify(projects));
+    } catch (e) {}
+  }, [projects]);
+
+  useEffect(() => {
+    try {
+      if (roadmap) {
+        localStorage.setItem('learnflow_roadmap', JSON.stringify(roadmap));
+      } else {
+        localStorage.removeItem('learnflow_roadmap');
+      }
+    } catch (e) {}
+  }, [roadmap]);
+
+  useEffect(() => {
+    try {
+      if (userProfile) {
+        localStorage.setItem('learnflow_user_profile', JSON.stringify(userProfile));
+      }
+    } catch (e) {}
+  }, [userProfile]);
+
   // Verify connection to Firestore on initial boot
   useEffect(() => {
     testConnection();
   }, []);
 
-  // Listen to Firebase Auth state
+  // Listen to Firebase Auth state - never wipe data on initial load or deployment
   useEffect(() => {
     const unsubscribeAuth = onAuthStateChanged(auth, (firebaseUser) => {
       setCurrentUser(firebaseUser);
-      if (!firebaseUser) {
-        if (!isGuestMode) {
-          setUserProfile(null);
-          setNotes([]);
-          setTasks([]);
-          setProjects([]);
-          setRoadmap(null);
-        }
-        setIsAuthChecking(false);
-      }
+      setIsAuthChecking(false);
     });
 
     return () => unsubscribeAuth();
-  }, [isGuestMode]);
+  }, []);
 
   // Subscribe to live Firestore collections strictly scoped to authenticated user ID
   useEffect(() => {
@@ -211,22 +274,18 @@ export default function App() {
     }
     try {
       localStorage.removeItem('learnflow_cached_notes');
+      localStorage.removeItem('learnflow_notes');
+      localStorage.removeItem('learnflow_tasks');
+      localStorage.removeItem('learnflow_projects');
+      localStorage.removeItem('learnflow_roadmap');
+      localStorage.removeItem('learnflow_user_profile');
+      localStorage.removeItem('learnflow_guest_mode');
     } catch (e) {}
     setNotes([]);
     setTasks([]);
     setProjects([]);
     setRoadmap(null);
-    setUserProfile((prev) =>
-      prev
-        ? {
-            ...prev,
-            streak: 0,
-            totalNotes: 0,
-            totalProjects: 0,
-            weeklyGoals: { completed: 0, total: 0 },
-          }
-        : null
-    );
+    setUserProfile(null);
     showToast('Workspace reset to fresh clean start (0 notes, 0 projects).', 'info', 'Workspace Reset');
   };
 
@@ -316,6 +375,28 @@ export default function App() {
       setSelectedNote(null);
     }
     showToast('Note deleted.', 'info', 'Removed');
+  };
+
+  const handleUpdateNote = async (updatedNote: Note) => {
+    setNotes((prev) => {
+      const updated = prev.map((n) => (n.id === updatedNote.id ? updatedNote : n));
+      try {
+        localStorage.setItem('learnflow_notes', JSON.stringify(updated));
+        localStorage.setItem('learnflow_cached_notes', JSON.stringify(updated));
+      } catch (e) {}
+      return updated;
+    });
+    if (selectedNote?.id === updatedNote.id) {
+      setSelectedNote(updatedNote);
+    }
+    if (currentUser) {
+      try {
+        await updateFirestoreNote(currentUser.uid, updatedNote.id, updatedNote);
+      } catch (err) {
+        console.error('Error updating firestore note:', err);
+      }
+    }
+    showToast(`Note "${updatedNote.title}" updated successfully!`, 'success', 'Note Updated');
   };
 
   // Task Handlers
@@ -472,6 +553,27 @@ export default function App() {
     }
   };
 
+  const handleUpdateAvatar = async (newAvatarUrl: string) => {
+    const updated: UserProfile = {
+      ...(userProfile || effectiveUser),
+      avatarUrl: newAvatarUrl,
+    };
+    setUserProfile(updated);
+    try {
+      localStorage.setItem('learnflow_user_profile', JSON.stringify(updated));
+    } catch (e) {}
+
+    if (currentUser) {
+      try {
+        await updateUserProfile(currentUser.uid, { avatarUrl: newAvatarUrl });
+      } catch (err) {
+        console.error('Error updating avatar in Firestore:', err);
+      }
+    }
+
+    showToast('Profile avatar updated successfully!', 'success', 'Avatar Updated');
+  };
+
   // Roadmap Handler
   const handleUpdateRoadmap = async (newRoadmap: Roadmap) => {
     setRoadmap(newRoadmap);
@@ -483,6 +585,22 @@ export default function App() {
       }
     }
     showToast(`Roadmap "${newRoadmap.title}" active and tracked!`, 'success', 'Roadmap Saved');
+  };
+
+  const handleDeleteRoadmap = async () => {
+    const roadmapId = roadmap?.id;
+    setRoadmap(null);
+    try {
+      localStorage.removeItem('learnflow_roadmap');
+    } catch (e) {}
+    if (currentUser && roadmapId) {
+      try {
+        await deleteFirestoreRoadmap(currentUser.uid, roadmapId);
+      } catch (err) {
+        console.error('Error deleting firestore roadmap:', err);
+      }
+    }
+    showToast('Active learning roadmap deleted.', 'info', 'Roadmap Removed');
   };
 
   // Lesson & Quiz Handlers
@@ -554,68 +672,148 @@ export default function App() {
   const isAuthenticated = Boolean(currentUser || isGuestMode);
 
   // Mobile Gesture Navigation:
-  // Swiping right advances forward (e.g. Dashboard/Home -> Notes),
-  // Swiping left returns backward (e.g. Notes -> Dashboard/Home)
-  const touchStartRef = useRef<{ x: number; y: number; time: number } | null>(null);
+  // User spec:
+  // Swiping right: advances Dashboard (home) -> Notes -> Projects -> Roadmap -> AI
+  // Swiping left: returns backwards AI -> Roadmap -> Projects -> Notes -> Dashboard (home)
+  const touchStateRef = useRef<{
+    startX: number;
+    startY: number;
+    startTime: number;
+    isVerticalScroll: boolean;
+  } | null>(null);
+
+  const [swipeFeedback, setSwipeFeedback] = useState<{
+    tabName: string;
+    direction: 'left' | 'right';
+  } | null>(null);
 
   const handleTouchStart = (e: React.TouchEvent) => {
-    if (e.touches.length !== 1) return;
-    touchStartRef.current = {
-      x: e.touches[0].clientX,
-      y: e.touches[0].clientY,
-      time: Date.now(),
-    };
-  };
-
-  const handleTouchEnd = (e: React.TouchEvent) => {
-    if (!touchStartRef.current || e.changedTouches.length !== 1) return;
+    if (e.touches.length !== 1) {
+      touchStateRef.current = null;
+      return;
+    }
 
     // Do not trigger swipe navigation when modals are active
     if (selectedNote || showLessonModal || showNewNoteModal || activeQuiz) {
-      touchStartRef.current = null;
+      touchStateRef.current = null;
       return;
     }
 
-    // Ignore touches on interactive form elements or canvases
+    // Ignore touches on interactive form elements, buttons, code blocks, or custom no-swipe targets
     const target = e.target as HTMLElement;
     if (
-      target.closest('input, textarea, select, canvas, button, [data-no-swipe="true"]')
+      target.closest(
+        'input, textarea, select, canvas, button, a, pre, code, [data-no-swipe="true"], .overflow-x-auto, [role="button"], [role="slider"], [contenteditable="true"]'
+      )
     ) {
-      touchStartRef.current = null;
+      touchStateRef.current = null;
       return;
     }
 
+    // Prevent swipe trigger if any parent container has horizontal scroll
+    let el: HTMLElement | null = target;
+    while (el && el !== e.currentTarget) {
+      const style = window.getComputedStyle(el);
+      if ((style.overflowX === 'auto' || style.overflowX === 'scroll') && el.scrollWidth > el.clientWidth) {
+        touchStateRef.current = null;
+        return;
+      }
+      el = el.parentElement;
+    }
+
+    touchStateRef.current = {
+      startX: e.touches[0].clientX,
+      startY: e.touches[0].clientY,
+      startTime: Date.now(),
+      isVerticalScroll: false,
+    };
+  };
+
+  const handleTouchMove = (e: React.TouchEvent) => {
+    if (!touchStateRef.current || e.touches.length !== 1) return;
+
+    const currentX = e.touches[0].clientX;
+    const currentY = e.touches[0].clientY;
+    const deltaX = currentX - touchStateRef.current.startX;
+    const deltaY = currentY - touchStateRef.current.startY;
+
+    // Early vertical scroll lockout:
+    // If finger moves more than 16px vertically and vertical exceeds horizontal travel,
+    // lock this gesture as page scroll so it will NEVER trigger a tab switch.
+    if (!touchStateRef.current.isVerticalScroll) {
+      if (Math.abs(deltaY) > 16 && Math.abs(deltaY) > Math.abs(deltaX) * 1.25) {
+        touchStateRef.current.isVerticalScroll = true;
+      }
+    }
+  };
+
+  const handleTouchEnd = (e: React.TouchEvent) => {
+    const state = touchStateRef.current;
+    touchStateRef.current = null; // Always clear state immediately
+
+    if (!state || e.changedTouches.length !== 1) return;
+
+    // If marked as vertical scroll, do not trigger swipe
+    if (state.isVerticalScroll) return;
+
     const touchEnd = e.changedTouches[0];
-    const deltaX = touchEnd.clientX - touchStartRef.current.x;
-    const deltaY = touchEnd.clientY - touchStartRef.current.y;
-    const deltaTime = Date.now() - touchStartRef.current.time;
+    const deltaX = touchEnd.clientX - state.startX;
+    const deltaY = touchEnd.clientY - state.startY;
+    const deltaTime = Date.now() - state.startTime;
 
-    touchStartRef.current = null;
-
-    // Minimum swipe threshold: 45px with horizontal dominance over vertical scroll, under 700ms
-    if (Math.abs(deltaX) > 45 && Math.abs(deltaX) > Math.abs(deltaY) * 1.25 && deltaTime < 700) {
+    // Minimum swipe threshold:
+    // 1. Min 60px horizontal travel
+    // 2. Strong horizontal intent: deltaX must be > 1.8x deltaY
+    // 3. Quick flick under 550ms
+    if (Math.abs(deltaX) >= 60 && Math.abs(deltaX) > Math.abs(deltaY) * 1.8 && deltaTime < 550) {
       const tabOrder: TabType[] = ['home', 'notes', 'projects', 'roadmap', 'ai'];
+      const tabLabels: Record<TabType, string> = {
+        home: 'Dashboard',
+        notes: 'Notes',
+        projects: 'Projects',
+        roadmap: 'Roadmap',
+        ai: 'AI Assistant',
+      };
       const currentIndex = tabOrder.indexOf(activeTab);
 
       if (deltaX > 0) {
-        // SWIPE RIGHT: (e.g., from Dashboard -> Notes)
-        if (activeTab === 'home') {
-          setActiveTab('notes');
-        } else if (currentIndex < tabOrder.length - 1) {
-          setActiveTab(tabOrder[currentIndex + 1]);
+        // SWIPE RIGHT (finger moving left-to-right ->):
+        // Dashboard -> Notes -> Projects -> Roadmap -> AI
+        if (currentIndex < tabOrder.length - 1) {
+          const nextTab = tabOrder[currentIndex + 1];
+          setActiveTab(nextTab);
+          setSwipeFeedback({
+            tabName: tabLabels[nextTab],
+            direction: 'right',
+          });
         }
       } else {
-        // SWIPE LEFT: (e.g., from Notes -> Dashboard)
-        if (activeTab === 'notes') {
-          setActiveTab('home');
-        } else if (activeTab === 'home') {
-          setActiveTab('notes');
-        } else if (currentIndex > 0) {
-          setActiveTab(tabOrder[currentIndex - 1]);
+        // SWIPE LEFT (finger moving right-to-left <-):
+        // AI -> Roadmap -> Projects -> Notes -> Dashboard
+        if (currentIndex > 0) {
+          const prevTab = tabOrder[currentIndex - 1];
+          setActiveTab(prevTab);
+          setSwipeFeedback({
+            tabName: tabLabels[prevTab],
+            direction: 'left',
+          });
         }
       }
     }
   };
+
+  const handleTouchCancel = () => {
+    touchStateRef.current = null;
+  };
+
+  // Auto-dismiss swipe feedback pill
+  useEffect(() => {
+    if (!swipeFeedback) return;
+    const timer = setTimeout(() => {
+      setSwipeFeedback(null);
+    }, 1400);
+    return () => clearTimeout(timer);
+  }, [swipeFeedback]);
 
   // Keyboard arrow navigation fallback (Left / Right arrow)
   useEffect(() => {
@@ -628,11 +826,11 @@ export default function App() {
       const currentIndex = tabOrder.indexOf(activeTab);
 
       if (e.key === 'ArrowRight') {
-        if (activeTab === 'home') setActiveTab('notes');
-        else if (currentIndex < tabOrder.length - 1) setActiveTab(tabOrder[currentIndex + 1]);
+        // Arrow Right advances forward
+        if (currentIndex < tabOrder.length - 1) setActiveTab(tabOrder[currentIndex + 1]);
       } else if (e.key === 'ArrowLeft') {
-        if (activeTab === 'notes') setActiveTab('home');
-        else if (currentIndex > 0) setActiveTab(tabOrder[currentIndex - 1]);
+        // Arrow Left returns backward
+        if (currentIndex > 0) setActiveTab(tabOrder[currentIndex - 1]);
       }
     };
 
@@ -668,15 +866,93 @@ export default function App() {
             onToggleTheme={toggleTheme}
             onLogout={handleLogout}
             onResetData={handleResetDatabase}
+            onUpdateAvatar={handleUpdateAvatar}
             activeTab={activeTab}
             onChangeTab={(tab) => setActiveTab(tab)}
           />
 
+          {/* Floating swipe feedback indicator */}
+          {swipeFeedback && (
+            <div className="md:hidden fixed top-16 left-1/2 -translate-x-1/2 z-50 pointer-events-none animate-in fade-in zoom-in-95 duration-150">
+              <div className="flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-slate-900/90 dark:bg-slate-100/95 text-white dark:text-slate-900 shadow-xl text-xs font-bold backdrop-blur-md border border-slate-700/50 dark:border-slate-300">
+                {swipeFeedback.direction === 'right' ? (
+                  <ArrowRight className="w-3.5 h-3.5 text-indigo-400 dark:text-indigo-600 animate-pulse" />
+                ) : (
+                  <ArrowLeft className="w-3.5 h-3.5 text-indigo-400 dark:text-indigo-600 animate-pulse" />
+                )}
+                <span>Switched to {swipeFeedback.tabName}</span>
+              </div>
+            </div>
+          )}
+
+          {/* Simple Mobile Navigation Bar (Quick Top Segmented Control) */}
+          <div className="md:hidden w-full max-w-7xl mx-auto px-3 pt-2 pb-1">
+            <div className="flex items-center bg-slate-200/80 dark:bg-slate-900/90 p-1 rounded-2xl border border-slate-300/60 dark:border-slate-800 shadow-2xs">
+              <button
+                onClick={() => setActiveTab('home')}
+                className={`flex-1 py-1.5 px-1.5 rounded-xl text-[11px] font-bold transition flex items-center justify-center gap-1 ${
+                  activeTab === 'home'
+                    ? 'bg-white dark:bg-slate-800 text-indigo-600 dark:text-indigo-400 shadow-xs'
+                    : 'text-slate-500 hover:text-slate-800 dark:hover:text-slate-200'
+                }`}
+              >
+                <Home className="w-3 h-3" />
+                <span>Dashboard</span>
+              </button>
+              <button
+                onClick={() => setActiveTab('notes')}
+                className={`flex-1 py-1.5 px-1.5 rounded-xl text-[11px] font-bold transition flex items-center justify-center gap-1 ${
+                  activeTab === 'notes'
+                    ? 'bg-white dark:bg-slate-800 text-indigo-600 dark:text-indigo-400 shadow-xs'
+                    : 'text-slate-500 hover:text-slate-800 dark:hover:text-slate-200'
+                }`}
+              >
+                <BookOpen className="w-3 h-3" />
+                <span>Notes</span>
+              </button>
+              <button
+                onClick={() => setActiveTab('projects')}
+                className={`flex-1 py-1.5 px-1.5 rounded-xl text-[11px] font-bold transition flex items-center justify-center gap-1 ${
+                  activeTab === 'projects'
+                    ? 'bg-white dark:bg-slate-800 text-indigo-600 dark:text-indigo-400 shadow-xs'
+                    : 'text-slate-500 hover:text-slate-800 dark:hover:text-slate-200'
+                }`}
+              >
+                <FolderGit2 className="w-3 h-3" />
+                <span>Projects</span>
+              </button>
+              <button
+                onClick={() => setActiveTab('roadmap')}
+                className={`flex-1 py-1.5 px-1.5 rounded-xl text-[11px] font-bold transition flex items-center justify-center gap-1 ${
+                  activeTab === 'roadmap'
+                    ? 'bg-white dark:bg-slate-800 text-indigo-600 dark:text-indigo-400 shadow-xs'
+                    : 'text-slate-500 hover:text-slate-800 dark:hover:text-slate-200'
+                }`}
+              >
+                <Compass className="w-3 h-3" />
+                <span>Roadmap</span>
+              </button>
+              <button
+                onClick={() => setActiveTab('ai')}
+                className={`flex-1 py-1.5 px-1.5 rounded-xl text-[11px] font-bold transition flex items-center justify-center gap-1 ${
+                  activeTab === 'ai'
+                    ? 'bg-white dark:bg-slate-800 text-indigo-600 dark:text-indigo-400 shadow-xs'
+                    : 'text-slate-500 hover:text-slate-800 dark:hover:text-slate-200'
+                }`}
+              >
+                <Bot className="w-3 h-3" />
+                <span>AI</span>
+              </button>
+            </div>
+          </div>
+
           {/* Main App Content Container with Mobile Horizontal Swipe Gesture Detection */}
           <main
             onTouchStart={handleTouchStart}
+            onTouchMove={handleTouchMove}
             onTouchEnd={handleTouchEnd}
-            className="flex-1 w-full max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4 sm:py-6 pb-24 md:pb-12 touch-pan-y"
+            onTouchCancel={handleTouchCancel}
+            className="flex-1 w-full max-w-7xl mx-auto px-3 sm:px-5 lg:px-8 py-2.5 sm:py-4 pb-20 md:pb-8 touch-pan-y"
           >
             {activeTab === 'home' && (
               <HomeScreen
@@ -701,6 +977,8 @@ export default function App() {
                 onOpenNote={(note) => setSelectedNote(note)}
                 onOpenNewNote={() => setShowNewNoteModal(true)}
                 onStartQuiz={handleStartQuiz}
+                onEditNote={(note) => setSelectedNote(note)}
+                onDeleteNote={handleDeleteNote}
               />
             )}
 
@@ -720,8 +998,9 @@ export default function App() {
 
             {activeTab === 'roadmap' && (
               <RoadmapScreen
-                roadmap={roadmap as Roadmap}
+                roadmap={roadmap}
                 onUpdateRoadmap={handleUpdateRoadmap}
+                onDeleteRoadmap={handleDeleteRoadmap}
                 onShowToast={showToast}
               />
             )}
@@ -745,6 +1024,7 @@ export default function App() {
               onClose={() => setSelectedNote(null)}
               onStartQuiz={handleStartQuiz}
               onDeleteNote={handleDeleteNote}
+              onUpdateNote={handleUpdateNote}
             />
           )}
 
