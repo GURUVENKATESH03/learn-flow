@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { Note } from '../../types';
 import { X, Sparkles, Brain, Code2, Tag, Copy, Check, BookOpen, Share2, Edit3, Trash2, Save } from 'lucide-react';
 import { FormattedMarkdown } from '../common/FormattedMarkdown';
+import { ConfirmModal } from './ConfirmModal';
 
 interface NoteDetailModalProps {
   note: Note;
@@ -21,6 +22,7 @@ export const NoteDetailModal: React.FC<NoteDetailModalProps> = ({
   const [activeTab, setActiveTab] = useState<'content' | 'mindmap' | 'ai'>('content');
   const [copied, setCopied] = useState(false);
   const [isEditing, setIsEditing] = useState(false);
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [editTitle, setEditTitle] = useState(note.title);
   const [editContent, setEditContent] = useState(note.content);
   const [editTags, setEditTags] = useState(note.tags.join(', '));
@@ -441,12 +443,7 @@ export const NoteDetailModal: React.FC<NoteDetailModalProps> = ({
         <div className="p-4 border-t border-slate-100 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-900/50 flex items-center justify-between gap-2.5">
           {onDeleteNote && (
             <button
-              onClick={() => {
-                if (confirm(`Delete note "${note.title}"?`)) {
-                  onDeleteNote(note.id);
-                  onClose();
-                }
-              }}
+              onClick={() => setShowDeleteConfirm(true)}
               className="py-2.5 px-3 rounded-xl border border-rose-200 dark:border-rose-900 text-rose-600 dark:text-rose-400 hover:bg-rose-50 dark:hover:bg-rose-950/40 text-xs font-semibold transition flex items-center gap-1.5"
               title="Delete Note"
             >
@@ -501,6 +498,20 @@ export const NoteDetailModal: React.FC<NoteDetailModalProps> = ({
           )}
         </div>
       </div>
+      <ConfirmModal
+        isOpen={showDeleteConfirm}
+        title="Delete Smart Note"
+        message={`Are you sure you want to delete "${note.title}"? This action cannot be undone.`}
+        confirmLabel="Delete Note"
+        cancelLabel="Cancel"
+        variant="danger"
+        onConfirm={() => {
+          onDeleteNote?.(note.id);
+          setShowDeleteConfirm(false);
+          onClose();
+        }}
+        onCancel={() => setShowDeleteConfirm(false)}
+      />
     </div>
   );
 };

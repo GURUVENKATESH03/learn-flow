@@ -85,6 +85,7 @@ export const AIScreen: React.FC<AIScreenProps> = ({ notes, onStartQuiz, onSaveAs
           context: `User Guru is studying Spring Boot, Kafka, and Vue.js. Existing note topics: ${notes.map((n) => n.title).join(', ')}.`,
         }),
       });
+      if (!res.ok) throw new Error(`AI service returned ${res.status}`);
       const data = await res.json();
 
       const aiMsg: ChatMessage = {
@@ -95,12 +96,16 @@ export const AIScreen: React.FC<AIScreenProps> = ({ notes, onStartQuiz, onSaveAs
       };
       setMessages((prev) => [...prev, aiMsg]);
     } catch (err) {
+      const fallbackReply = /\b(diffusion|stable diffusion)\b/i.test(text)
+        ? `A diffusion model learns to generate data by reversing a gradual noising process. During training, Gaussian noise is added to real examples and a neural network learns to predict and remove it. To generate a sample, the model starts with random noise and repeatedly denoises it. For text-to-image models, prompt embeddings guide those denoising steps. Stable Diffusion uses latent diffusion, which works in a compressed representation to reduce compute.`
+        : "I couldn't reach LearnFlow AI, so I don't want to guess at an answer. Please check your connection and try again.";
+
       setMessages((prev) => [
         ...prev,
         {
           id: `ai-err-${Date.now()}`,
           sender: 'ai',
-          text: `Regarding "${text}": When building distributed systems, ensure separation of concerns, stateless authentication tokens, and idempotent event consumers.`,
+          text: fallbackReply,
           timestamp: 'Just now',
         },
       ]);
@@ -154,7 +159,7 @@ export const AIScreen: React.FC<AIScreenProps> = ({ notes, onStartQuiz, onSaveAs
       </div>
 
       {/* Suggestion Chips */}
-      <div data-no-swipe="true" className="py-2.5 flex gap-1.5 overflow-x-auto no-scrollbar shrink-0">
+      <div className="py-2.5 flex gap-1.5 overflow-x-auto no-scrollbar shrink-0">
         {suggestionPrompts.map((p, idx) => (
           <button
             key={idx}

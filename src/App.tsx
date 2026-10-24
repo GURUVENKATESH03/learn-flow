@@ -3,7 +3,7 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect } from 'react';
 import { onAuthStateChanged, User as FirebaseUser } from 'firebase/auth';
 import { Header } from './components/Header';
 import { Navigation, TabType } from './components/Navigation';
@@ -46,7 +46,7 @@ import {
 
 import { Note, TaskItem, Project, Roadmap, Quiz, UserProfile } from './types';
 import confetti from 'canvas-confetti';
-import { BookOpen, Loader2, ArrowLeft, ArrowRight, FolderGit2, Compass, Bot, Home } from 'lucide-react';
+import { BookOpen, Loader2 } from 'lucide-react';
 import { Toast, ToastMessage } from './components/common/Toast';
 
 export default function App() {
@@ -220,7 +220,12 @@ export default function App() {
 
     const unsubRoadmaps = subscribeToRoadmaps(userId, (liveRoadmaps) => {
       if (liveRoadmaps.length > 0) {
-        setRoadmap(liveRoadmaps[0]);
+        const roadmapTimestamp = (item: Roadmap) =>
+          item.updatedAt ?? Number(item.id.match(/^rm-(\d+)$/)?.[1] ?? 0);
+        const [latestRoadmap] = [...liveRoadmaps].sort(
+          (a, b) => roadmapTimestamp(b) - roadmapTimestamp(a)
+        );
+        setRoadmap(latestRoadmap);
       } else {
         setRoadmap(null);
       }
@@ -576,15 +581,16 @@ export default function App() {
 
   // Roadmap Handler
   const handleUpdateRoadmap = async (newRoadmap: Roadmap) => {
-    setRoadmap(newRoadmap);
+    const roadmapToSave = { ...newRoadmap, updatedAt: Date.now() };
+    setRoadmap(roadmapToSave);
     if (currentUser) {
       try {
-        await saveFirestoreRoadmap(currentUser.uid, newRoadmap);
+        await saveFirestoreRoadmap(currentUser.uid, roadmapToSave);
       } catch (err) {
         console.error('Error saving firestore roadmap:', err);
       }
     }
-    showToast(`Roadmap "${newRoadmap.title}" active and tracked!`, 'success', 'Roadmap Saved');
+    showToast(`Roadmap "${roadmapToSave.title}" active and tracked!`, 'success', 'Roadmap Saved');
   };
 
   const handleDeleteRoadmap = async () => {
@@ -671,183 +677,6 @@ export default function App() {
 
   const isAuthenticated = Boolean(currentUser || isGuestMode);
 
-  // Mobile Gesture Navigation:
-  // Tab order: Home (Dashboard) -> Notes -> Projects -> Roadmap -> AI
-  // Standard carousel gesture mapping:
-  // - Swipe Left (finger moves right-to-left <-): advances to next tab (Home -> Notes -> Projects -> Roadmap -> AI)
-  // - Swipe Right (finger moves left-to-right ->): returns to previous tab (AI -> Roadmap -> Projects -> Notes -> Home)
-  const touchStateRef = useRef<{
-    startX: number;
-    startY: number;
-    startTime: number;
-    isVerticalScroll: boolean;
-    isHorizontalSwipe: boolean;
-  } | null>(null);
-
-  const [swipeFeedback, setSwipeFeedback] = useState<{
-    tabName: string;
-    direction: 'left' | 'right';
-  } | null>(null);
-
-  const handleTouchStart = (e: React.TouchEvent) => {
-    if (e.touches.length !== 1) {
-      touchStateRef.current = null;
-      return;
-    }
-
-    // Do not trigger swipe navigation when modals are active
-    if (selectedNote || showLessonModal || showNewNoteModal || activeQuiz) {
-      touchStateRef.current = null;
-      return;
-    }
-
-    // Ignore touches on interactive form elements, buttons, code blocks, or custom no-swipe targets
-    const target = e.target as HTMLElement;
-    if (
-      target.closest(
-        'input, textarea, select, canvas, button, a, pre, code, [data-no-swipe="true"], .overflow-x-auto, [role="button"], [role="slider"], [contenteditable="true"]'
-      )
-    ) {
-      touchStateRef.current = null;
-      return;
-    }
-
-    // Prevent swipe trigger if any parent container has horizontal scroll
-    let el: HTMLElement | null = target;
-    while (el && el !== e.currentTarget) {
-      const style = window.getComputedStyle(el);
-      if ((style.overflowX === 'auto' || style.overflowX === 'scroll') && el.scrollWidth > el.clientWidth) {
-        touchStateRef.current = null;
-        return;
-      }
-      el = el.parentElement;
-    }
-
-    touchStateRef.current = {
-      startX: e.touches[0].clientX,
-      startY: e.touches[0].clientY,
-      startTime: Date.now(),
-      isVerticalScroll: false,
-      isHorizontalSwipe: false,
-    };
-  };
-
-  const handleTouchMove = (e: React.TouchEvent) => {
-    if (!touchStateRef.current || e.touches.length !== 1) return;
-
-    const currentX = e.touches[0].clientX;
-    const currentY = e.touches[0].clientY;
-    const deltaX = currentX - touchStateRef.current.startX;
-    const deltaY = currentY - touchStateRef.current.startY;
-    const absX = Math.abs(deltaX);
-    const absY = Math.abs(deltaY);
-
-    // Prioritize horizontal gestures:
-    // If horizontal motion is established early (absX > 12 and absX >= absY),
-    // prioritize horizontal swipe navigation.
-    // Only lock out as vertical scroll if vertical movement strongly dominates (> 22px and > absX * 1.5).
-    if (!touchStateRef.current.isVerticalScroll && !touchStateRef.current.isHorizontalSwipe) {
-      if (absX > 12 && absX >= absY) {
-        touchStateRef.current.isHorizontalSwipe = true;
-      } else if (absY > 22 && absY > absX * 1.5) {
-        touchStateRef.current.isVerticalScroll = true;
-      }
-    }
-  };
-
-  const handleTouchEnd = (e: React.TouchEvent) => {
-    const state = touchStateRef.current;
-    touchStateRef.current = null; // Always clear state immediately
-
-    if (!state || e.changedTouches.length !== 1) return;
-
-    // If marked as vertical scroll, do not trigger swipe
-    if (state.isVerticalScroll) return;
-
-    const touchEnd = e.changedTouches[0];
-    const deltaX = touchEnd.clientX - state.startX;
-    const deltaY = touchEnd.clientY - state.startY;
-    const absX = Math.abs(deltaX);
-    const absY = Math.abs(deltaY);
-    const deltaTime = Date.now() - state.startTime;
-
-    // Swipe validation criteria:
-    // 1. Min 50px horizontal travel
-    // 2. Horizontal intent: absX > absY * 1.25 or established as horizontal swipe early
-    // 3. Fluid swipe completed within 650ms
-    if (absX >= 50 && (state.isHorizontalSwipe || absX > absY * 1.25) && deltaTime < 650) {
-      const tabOrder: TabType[] = ['home', 'notes', 'projects', 'roadmap', 'ai'];
-      const tabLabels: Record<TabType, string> = {
-        home: 'Dashboard',
-        notes: 'Notes',
-        projects: 'Projects',
-        roadmap: 'Roadmap',
-        ai: 'AI Assistant',
-      };
-      const currentIndex = tabOrder.indexOf(activeTab);
-
-      if (deltaX < 0) {
-        // SWIPE LEFT (finger drags right-to-left <-):
-        // Pulls next screen into view: Home (Dashboard) -> Notes -> Projects -> Roadmap -> AI
-        if (currentIndex < tabOrder.length - 1) {
-          const nextTab = tabOrder[currentIndex + 1];
-          setActiveTab(nextTab);
-          setSwipeFeedback({
-            tabName: tabLabels[nextTab],
-            direction: 'left',
-          });
-        }
-      } else if (deltaX > 0) {
-        // SWIPE RIGHT (finger drags left-to-right ->):
-        // Pulls previous screen into view: AI -> Roadmap -> Projects -> Notes -> Home (Dashboard)
-        if (currentIndex > 0) {
-          const prevTab = tabOrder[currentIndex - 1];
-          setActiveTab(prevTab);
-          setSwipeFeedback({
-            tabName: tabLabels[prevTab],
-            direction: 'right',
-          });
-        }
-      }
-    }
-  };
-
-  const handleTouchCancel = () => {
-    touchStateRef.current = null;
-  };
-
-  // Auto-dismiss swipe feedback pill
-  useEffect(() => {
-    if (!swipeFeedback) return;
-    const timer = setTimeout(() => {
-      setSwipeFeedback(null);
-    }, 1400);
-    return () => clearTimeout(timer);
-  }, [swipeFeedback]);
-
-  // Keyboard arrow navigation fallback (Left / Right arrow)
-  useEffect(() => {
-    const handleKeyDown = (e: KeyboardEvent) => {
-      if (selectedNote || showLessonModal || showNewNoteModal || activeQuiz) return;
-      const target = e.target as HTMLElement;
-      if (target.closest('input, textarea, select')) return;
-
-      const tabOrder: TabType[] = ['home', 'notes', 'projects', 'roadmap', 'ai'];
-      const currentIndex = tabOrder.indexOf(activeTab);
-
-      if (e.key === 'ArrowRight') {
-        // Arrow Right advances forward
-        if (currentIndex < tabOrder.length - 1) setActiveTab(tabOrder[currentIndex + 1]);
-      } else if (e.key === 'ArrowLeft') {
-        // Arrow Left returns backward
-        if (currentIndex > 0) setActiveTab(tabOrder[currentIndex - 1]);
-      }
-    };
-
-    window.addEventListener('keydown', handleKeyDown);
-    return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [activeTab, selectedNote, showLessonModal, showNewNoteModal, activeQuiz]);
-
   return (
     <div
       className={`min-h-screen w-full flex flex-col transition-colors duration-200 ${
@@ -881,88 +710,9 @@ export default function App() {
             onChangeTab={(tab) => setActiveTab(tab)}
           />
 
-          {/* Floating swipe feedback indicator */}
-          {swipeFeedback && (
-            <div className="md:hidden fixed top-16 left-1/2 -translate-x-1/2 z-50 pointer-events-none animate-in fade-in zoom-in-95 duration-150">
-              <div className="flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-slate-900/90 dark:bg-slate-100/95 text-white dark:text-slate-900 shadow-xl text-xs font-bold backdrop-blur-md border border-slate-700/50 dark:border-slate-300">
-                {swipeFeedback.direction === 'right' ? (
-                  <ArrowRight className="w-3.5 h-3.5 text-indigo-400 dark:text-indigo-600 animate-pulse" />
-                ) : (
-                  <ArrowLeft className="w-3.5 h-3.5 text-indigo-400 dark:text-indigo-600 animate-pulse" />
-                )}
-                <span>Switched to {swipeFeedback.tabName}</span>
-              </div>
-            </div>
-          )}
-
-          {/* Simple Mobile Navigation Bar (Quick Top Segmented Control) */}
-          <div className="md:hidden w-full max-w-7xl mx-auto px-3 pt-2 pb-1">
-            <div className="flex items-center bg-slate-200/80 dark:bg-slate-900/90 p-1 rounded-2xl border border-slate-300/60 dark:border-slate-800 shadow-2xs">
-              <button
-                onClick={() => setActiveTab('home')}
-                className={`flex-1 py-1.5 px-1.5 rounded-xl text-[11px] font-bold transition flex items-center justify-center gap-1 ${
-                  activeTab === 'home'
-                    ? 'bg-white dark:bg-slate-800 text-indigo-600 dark:text-indigo-400 shadow-xs'
-                    : 'text-slate-500 hover:text-slate-800 dark:hover:text-slate-200'
-                }`}
-              >
-                <Home className="w-3 h-3" />
-                <span>Dashboard</span>
-              </button>
-              <button
-                onClick={() => setActiveTab('notes')}
-                className={`flex-1 py-1.5 px-1.5 rounded-xl text-[11px] font-bold transition flex items-center justify-center gap-1 ${
-                  activeTab === 'notes'
-                    ? 'bg-white dark:bg-slate-800 text-indigo-600 dark:text-indigo-400 shadow-xs'
-                    : 'text-slate-500 hover:text-slate-800 dark:hover:text-slate-200'
-                }`}
-              >
-                <BookOpen className="w-3 h-3" />
-                <span>Notes</span>
-              </button>
-              <button
-                onClick={() => setActiveTab('projects')}
-                className={`flex-1 py-1.5 px-1.5 rounded-xl text-[11px] font-bold transition flex items-center justify-center gap-1 ${
-                  activeTab === 'projects'
-                    ? 'bg-white dark:bg-slate-800 text-indigo-600 dark:text-indigo-400 shadow-xs'
-                    : 'text-slate-500 hover:text-slate-800 dark:hover:text-slate-200'
-                }`}
-              >
-                <FolderGit2 className="w-3 h-3" />
-                <span>Projects</span>
-              </button>
-              <button
-                onClick={() => setActiveTab('roadmap')}
-                className={`flex-1 py-1.5 px-1.5 rounded-xl text-[11px] font-bold transition flex items-center justify-center gap-1 ${
-                  activeTab === 'roadmap'
-                    ? 'bg-white dark:bg-slate-800 text-indigo-600 dark:text-indigo-400 shadow-xs'
-                    : 'text-slate-500 hover:text-slate-800 dark:hover:text-slate-200'
-                }`}
-              >
-                <Compass className="w-3 h-3" />
-                <span>Roadmap</span>
-              </button>
-              <button
-                onClick={() => setActiveTab('ai')}
-                className={`flex-1 py-1.5 px-1.5 rounded-xl text-[11px] font-bold transition flex items-center justify-center gap-1 ${
-                  activeTab === 'ai'
-                    ? 'bg-white dark:bg-slate-800 text-indigo-600 dark:text-indigo-400 shadow-xs'
-                    : 'text-slate-500 hover:text-slate-800 dark:hover:text-slate-200'
-                }`}
-              >
-                <Bot className="w-3 h-3" />
-                <span>AI</span>
-              </button>
-            </div>
-          </div>
-
-          {/* Main App Content Container with Mobile Horizontal Swipe Gesture Detection */}
+          {/* Main App Content Container */}
           <main
-            onTouchStart={handleTouchStart}
-            onTouchMove={handleTouchMove}
-            onTouchEnd={handleTouchEnd}
-            onTouchCancel={handleTouchCancel}
-            className="flex-1 w-full max-w-7xl mx-auto px-3 sm:px-5 lg:px-8 py-2.5 sm:py-4 pb-20 md:pb-8 touch-pan-y"
+            className="flex-1 w-full max-w-7xl mx-auto px-3 sm:px-5 lg:px-8 py-2.5 sm:py-4 pb-20 md:pb-8"
           >
             {activeTab === 'home' && (
               <HomeScreen

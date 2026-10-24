@@ -350,6 +350,7 @@ app.post('/api/ai/chat', async (req: Request, res: Response) => {
     const systemPrompt = `You are LearnFlow AI, an intelligent, encouraging, and highly technical mobile learning companion for developers and engineers. 
 The user is Guru, a software developer focusing on Java, Spring Boot, Vue.js, Distributed Systems, Microservices, and Cloud Native architecture.
 Provide concise, mobile-friendly responses (use clear bullet points, brief code snippets where helpful, and high-signal advice). 
+Answer the user's actual question directly; do not force the user's usual technology stack into unrelated topics. Treat context as optional background, not as a replacement for the question.
 Format text clearly with clean paragraphs and lists. Keep responses under 250 words so they read beautifully on a mobile phone screen.`;
 
     const contents = [
@@ -378,7 +379,19 @@ Format text clearly with clean paragraphs and lists. Keep responses under 250 wo
     let responseText = '';
     const qLower = message.toLowerCase();
 
-    if (qLower.includes('sql') && qLower.includes('nosql')) {
+    if (qLower.includes('diffusion model') || qLower.includes('diffusion models') || qLower.includes('stable diffusion')) {
+      responseText = `### What is a diffusion model?
+
+A diffusion model is a generative model that learns to create data by reversing a gradual noising process.
+
+1. **Training:** Start with a real example (such as an image), add progressively more Gaussian noise, and train a neural network to predict and remove that noise at different steps.
+2. **Generation:** Start with random noise, then repeatedly apply the learned denoising steps until a new sample emerges.
+3. **Conditioning:** For text-to-image generation, a text encoder turns the prompt into features that guide the denoising network (often through cross-attention).
+
+**Examples:** DDPMs use a probabilistic reverse process; DDIM can generate samples in fewer, often deterministic steps. Latent diffusion (used by Stable Diffusion) denoises a compressed representation to reduce compute.
+
+In short: it learns how to turn noise into a sample that matches the training distribution, optionally guided by a prompt.`;
+    } else if (qLower.includes('sql') && qLower.includes('nosql')) {
       responseText = `### SQL vs NoSQL: Engineering Trade-offs
 
 1. **SQL (Relational):**
@@ -406,12 +419,7 @@ Format text clearly with clean paragraphs and lists. Keep responses under 250 wo
 
 **Key Benefit:** Business rules can be thoroughly tested in isolation without needing live databases or network mocks!`;
     } else {
-      responseText = `Regarding "${message}":
-- **Core Architecture:** Keep domain entities decoupled from delivery mechanisms.
-- **Microservices Boundary:** Ensure independent deployability and asynchronous events via Kafka.
-- **Spring Boot & Vue:** Use stateless JWT authentication and type-safe REST contracts.
-
-Let me know if you would like a code snippet, architectural diagram, or quick quiz on this!`;
+      responseText = `I couldn't reach Gemini to generate a reliable answer for that question. Please check your connection and try again.`;
     }
 
     res.json({

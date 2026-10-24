@@ -323,7 +323,7 @@ export const RoadmapScreen: React.FC<RoadmapScreenProps> = ({
       }));
 
       const newRoadmap: Roadmap = {
-        id: `rm-${Date.now()}`,
+        id: roadmap?.id || `rm-${Date.now()}`,
         title: curriculumData.title || `${topic} Mastery Track`,
         roleTrack: topic,
         currentWeek: 1,

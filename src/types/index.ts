@@ -124,6 +124,7 @@ export interface Roadmap {
   currentWeek: number;
   totalWeeks: number;
   overallProgress: number;
+  updatedAt?: number;
   milestones: RoadmapMilestone[];
 }
 
